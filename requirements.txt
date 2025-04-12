@@ -1,7 +1,5 @@
 streamlit
 transformers
 torch
-PyPDF2
 python-dotenv
-accelerate
-safetensors
+PyPDF2
