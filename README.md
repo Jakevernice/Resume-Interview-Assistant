@@ -19,7 +19,7 @@ An **AI-powered tool** that analyzes resumes and generates personalized intervie
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/resume-interview-assistant.git
+git clone https://github.com/jakevernice/resume-interview-assistant.git
 cd resume-interview-assistant
 ```
 
