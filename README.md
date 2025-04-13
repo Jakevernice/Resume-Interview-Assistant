@@ -1,76 +1,99 @@
-# 🎯 Resume Interview Assistant
 
-An **AI-powered tool** that analyzes resumes and generates personalized interview preparation guides.
+# Resume Interview Assistant 🎯
 
----
-
-## ✨ Features
-
-- 📄 **Smart Resume Parsing**
-- 🤖 **AI-Powered Analysis**
-- 💡 **Technical Skills Detection**
-- 📊 **Structured Output**
-- 🎯 **Interview Preparation Tips**
+A smart tool that analyzes resumes and generates personalized technical interview preparation guides using Google's Gemini 2.0 Flash AI model.
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Features
 
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/jakevernice/resume-interview-assistant.git
-cd resume-interview-assistant
-```
-
-### 2. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Add Your HuggingFace API Key
-
-```bash
-echo "HUGGINGFACE_API_KEY=your_api_key_here" > .env
-```
-
-### 4. Run the App
-
-```bash
-streamlit run main.py
-```
+- **Resume Analysis**: Extracts and processes skills, experience, and qualifications from PDF resumes
+- **Dynamic Interview Guides**: Generates role-specific interview preparation content
+- **Company-Specific Focus**: Tailors questions and preparation steps for specific companies
+- **Multi-Section Output**:
+  - Technical Questions
+  - Coding Challenges
+  - System Design Questions
+  - Key Concepts
+  - Preparation Steps
+- **Downloadable Results**: Export the complete interview guide as a text file
 
 ---
 
-## 🛠️ Tech Stack
+## 💻 Tech Stack
 
-- [Python](https://www.python.org/)
-- [Streamlit](https://streamlit.io/)
-- [HuggingFace Transformers](https://huggingface.co/transformers/)
-- [PyPDF2](https://pypi.org/project/PyPDF2/)
-
----
-
-## 📁 Project Structure
-
-```
-resume-interview-assistant/
-├── main.py             # Main application
-├── llm_service.py      # AI interaction logic
-├── pdf_processor.py    # PDF resume parsing logic
-├── prompts.py          # Prompt templates for LLM
-├── requirements.txt    # Project dependencies
-└── .env                # Environment variables (not committed)
-```
+- **Frontend**: Streamlit  
+- **AI Model**: Google Gemini 2.0 Flash  
+- **PDF Processing**: PyPDF2  
+- **Other Tools**: Python, dotenv
 
 ---
 
-## ❤️ Built With
+## 🛠️ Setup & Installation
 
-Made with **Python**, **Streamlit**, and **HuggingFace** — to make your interview prep smarter.
+1. **Clone the repository**
+    ```bash
+    git clone https://github.com/jakevernice/Resume-Interview-Assistant.git
+    cd Resume-Interview-Assistant
+    ```
+
+2. **Set up a virtual environment (recommended)**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+
+3. **Install dependencies**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4. **Set up environment variables**
+    - Create a `.env` file in the root directory
+    - Add your Google API key:
+      ```env
+      GOOGLE_API_KEY=your_api_key_here
+      ```
+
+5. **Run the application**
+    ```bash
+    streamlit run main.py
+    ```
 
 ---
 
-## 📬 Contact
-For suggestions or contributions, feel free to open an issue or submit a pull request.
+## 📖 Usage Guide
+
+- **Upload Resume**
+  - Click "Upload Resume" button
+  - Select a PDF file of your resume
+
+- **Enter Details**
+  - Company Name
+  - Role/Position
+  - Select from suggested roles or enter custom role
+
+- **Generate Guide**
+  - Click "Generate Interview Preparation"
+  - View results in different tabs:
+    - Skills Overview
+    - Interview Guide
+    - Resume Details
+
+- **Download Results**
+  - Use the download button to save the complete guide
+
+---
+
+## 📋 Requirements
+
+- Python 3.8+
+- Google API Key (Gemini AI)
+- PDF resume file
+- Internet connection
+
+---
+
+## 💬 Support
+
+For support, please open an issue in the GitHub repository.
