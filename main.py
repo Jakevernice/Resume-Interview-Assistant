@@ -24,9 +24,9 @@ def main():
         st.session_state['role_name'] = ""
 
     # Initialize services
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        st.error("Google API key not found in .env file")
+        st.error("Google API key not found in environment file")
         st.stop()
     
     llm_service = GeminiService(api_key)
