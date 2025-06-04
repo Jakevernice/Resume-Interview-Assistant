@@ -22,11 +22,20 @@ def main():
         st.session_state['company_name'] = ""
     if 'role_name' not in st.session_state:
         st.session_state['role_name'] = ""
+    if 'chat_history' not in st.session_state:
+        st.session_state['chat_history'] = []
 
     # Initialize services
-    api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = None
+    try:
+        # Try to get the API key from Streamlit secrets first
+        api_key = st.secrets.get("GOOGLE_API_KEY")
+    except FileNotFoundError:
+        # If secrets.toml is not found, try environment variables
+        api_key = os.getenv("GOOGLE_API_KEY")
+
     if not api_key:
-        st.error("Google API key not found in environment file")
+        st.error("Google API key not found. Please set the GOOGLE_API_KEY in a secrets.toml file or as an environment variable.")
         st.stop()
     
     llm_service = GeminiService(api_key)
@@ -105,6 +114,11 @@ def main():
                         role_name
                     )
                     response = llm_service.generate_response(prompt, role_name)
+
+                    # Format the initial response and add it to chat history
+                    if response:
+                        formatted_initial_response = {"role": "assistant", "parts": [{"text": response.text if hasattr(response, 'text') else str(response)}]}
+                        st.session_state.chat_history.append(formatted_initial_response)
                     
                     # Display results
                     st.success(f"Analysis Complete for {role_name} position! 🎉")
@@ -161,6 +175,39 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
                 st.error("Please try again or contact support if the problem persists.")
+    
+    # Chat Interface
+    st.markdown("---")
+    st.header("Ask Follow-up Questions")
+
+    if not st.session_state['chat_history']:
+        st.info("Generate an interview preparation guide first to start the chat.")
+
+    # Display chat messages
+    for message in st.session_state.chat_history:
+        # Format the role for display
+        display_role = "User" if message["role"] == "user" else "Assistant"
+        with st.chat_message(display_role):
+            # Extract content from the parts list for display
+            content_text = ""
+            for part in message.get("parts", []):
+                st.markdown(part.get("text", ""))
+
+    # Chat input
+    if prompt := st.chat_input("Ask a question about the interview preparation or your resume..."):
+        with st.chat_message("user"):
+            st.session_state.chat_history.append({"role": "user", "parts": [{"text": prompt}]})
+            st.markdown(prompt)
+
+            # Pass the correctly formatted history to the chat function
+        # Add a print statement here to inspect chat_history before the call
+            print("Chat History before API call:", st.session_state.chat_history)
+            response = llm_service.chat_with_history(st.session_state.chat_history, prompt) 
+            st.markdown(response)
+
+            # Format the assistant's response for the chat history
+            formatted_assistant_response = {"role": "assistant", "parts": [{"text": response}]}
+            st.session_state.chat_history.append(formatted_assistant_response)
 
     # Footer
     st.markdown("---")

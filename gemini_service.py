@@ -5,7 +5,7 @@ import time
 class GeminiService:
     def __init__(self, api_key: str):
         genai.configure(api_key=api_key)
-        
+
         # Initialize with Gemini 2.0 Flash model
         try:
             self.model = genai.GenerativeModel('gemini-2.0-flash')
@@ -49,3 +49,26 @@ Focus on practical, real-world scenarios and provide specific examples."""
         except Exception as e:
             print(f"Error in Gemini API call: {str(e)}")
             return f"Error generating response: {str(e)}"
+
+    def chat_with_history(self, history: list, new_question: str) -> str:
+        """
+        Maintains conversation context and generates a response to a new question.
+
+        Args:
+            history: A list of previous chat turns in the format [{"role": "user", "parts": ["..."]}, {"role": "model", "parts": ["..."]}].
+            new_question: The new question to ask.
+
+        Returns:
+            The generated response as a string, or an error message.
+        """
+        try:
+            chat = self.model.start_chat(history=history)
+            response = chat.send_message(new_question)
+
+            if response.text:
+                return response.text
+            return "Failed to generate response."
+
+        except Exception as e:
+            print(f"Error in Gemini API call with history: {str(e)}")
+            return f"Error generating response with history: {str(e)}"
