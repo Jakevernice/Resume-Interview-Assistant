@@ -26,7 +26,7 @@ def main():
         st.session_state['chat_history'] = []
 
     # Initialize services
-    api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         st.error("Google API key not found in environment file")
         st.stop()
@@ -107,6 +107,11 @@ def main():
                         role_name
                     )
                     response = llm_service.generate_response(prompt, role_name)
+
+                    # Format the initial response and add it to chat history
+                    if response:
+                        formatted_initial_response = {"role": "assistant", "parts": [{"text": response.text if hasattr(response, 'text') else str(response)}]}
+                        st.session_state.chat_history.append(formatted_initial_response)
                     
                     # Display results
                     st.success(f"Analysis Complete for {role_name} position! 🎉")
@@ -173,19 +178,29 @@ def main():
 
     # Display chat messages
     for message in st.session_state.chat_history:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        # Format the role for display
+        display_role = "User" if message["role"] == "user" else "Assistant"
+        with st.chat_message(display_role):
+            # Extract content from the parts list for display
+            content_text = ""
+            for part in message.get("parts", []):
+                st.markdown(part.get("text", ""))
 
     # Chat input
     if prompt := st.chat_input("Ask a question about the interview preparation or your resume..."):
-        st.session_state.chat_history.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
+            st.session_state.chat_history.append({"role": "user", "parts": [{"text": prompt}]})
             st.markdown(prompt)
 
-        with st.chat_message("assistant"):
-            response = llm_service.chat_with_history(st.session_state.chat_history, prompt)
+            # Pass the correctly formatted history to the chat function
+        # Add a print statement here to inspect chat_history before the call
+            print("Chat History before API call:", st.session_state.chat_history)
+            response = llm_service.chat_with_history(st.session_state.chat_history, prompt) 
             st.markdown(response)
-            st.session_state.chat_history.append({"role": "assistant", "content": response})
+
+            # Format the assistant's response for the chat history
+            formatted_assistant_response = {"role": "assistant", "parts": [{"text": response}]}
+            st.session_state.chat_history.append(formatted_assistant_response)
 
     # Footer
     st.markdown("---")
