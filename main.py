@@ -22,6 +22,8 @@ def main():
         st.session_state['company_name'] = ""
     if 'role_name' not in st.session_state:
         st.session_state['role_name'] = ""
+    if 'chat_history' not in st.session_state:
+        st.session_state['chat_history'] = []
 
     # Initialize services
     api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
@@ -161,6 +163,29 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
                 st.error("Please try again or contact support if the problem persists.")
+    
+    # Chat Interface
+    st.markdown("---")
+    st.header("Ask Follow-up Questions")
+
+    if not st.session_state['chat_history']:
+        st.info("Generate an interview preparation guide first to start the chat.")
+
+    # Display chat messages
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # Chat input
+    if prompt := st.chat_input("Ask a question about the interview preparation or your resume..."):
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        with st.chat_message("assistant"):
+            response = llm_service.chat_with_history(st.session_state.chat_history, prompt)
+            st.markdown(response)
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
 
     # Footer
     st.markdown("---")
