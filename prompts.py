@@ -12,6 +12,10 @@ class PromptGenerator:
 
         prompt = f"""Creating interview guide for {role_name} position at {company_name}.
 
+First, provide a brief overview of {company_name}'s typical technical environment and projects.
+
+Then, generate a detailed interview guide for a {role_name} position, considering the following:
+
 Candidate's Technical Profile:
 - Programming Languages: {', '.join(languages) if languages else 'Not specified'}
 - Frameworks & Libraries: {', '.join(frameworks) if frameworks else 'Not specified'}
