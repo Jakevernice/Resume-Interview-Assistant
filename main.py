@@ -26,9 +26,16 @@ def main():
         st.session_state['chat_history'] = []
 
     # Initialize services
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = None
+    try:
+        # Try to get the API key from Streamlit secrets first
+        api_key = st.secrets.get("GOOGLE_API_KEY")
+    except FileNotFoundError:
+        # If secrets.toml is not found, try environment variables
+        api_key = os.getenv("GOOGLE_API_KEY")
+
     if not api_key:
-        st.error("Google API key not found in environment file")
+        st.error("Google API key not found. Please set the GOOGLE_API_KEY in a secrets.toml file or as an environment variable.")
         st.stop()
     
     llm_service = GeminiService(api_key)
