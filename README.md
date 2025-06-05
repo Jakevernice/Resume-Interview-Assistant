@@ -17,7 +17,7 @@ A smart tool that analyzes resumes and generates personalized technical intervie
   - Key Concepts
   - Preparation Steps
 - **Downloadable Results**: Export the complete interview guide as a text file
-
+*Interactive Chatbot**: Engage in a follow-up conversation to clarify interview guide sections or ask additional questions related to your resume.
 ---
 
 ## 💻 Tech Stack
