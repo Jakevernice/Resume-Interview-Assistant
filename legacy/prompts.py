@@ -4,7 +4,7 @@ class PromptGenerator:
         languages = skills.get('languages', [])
         frameworks = skills.get('frameworks', [])
         tools = skills.get('tools', [])
-        
+
         # Remove duplicates and clean up skills
         languages = list(set([lang.strip() for lang in languages]))
         frameworks = list(set([framework.strip() for framework in frameworks]))

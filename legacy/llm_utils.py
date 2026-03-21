@@ -8,7 +8,7 @@ class LLMUtils:
         if not response or len(response) < 50:  # Reduced minimum length
             print(f"Response failed length validation: {len(response) if response else 0} chars")
             return False
-            
+
         # Removed section validation to allow more flexible responses
         return True
 
@@ -17,7 +17,7 @@ class LLMUtils:
         try:
             # Debug print
             print(f"Cleaning text of length: {len(generated_text)}")
-            
+
             # Remove the prompt from the beginning
             if prompt in generated_text:
                 response = generated_text[len(prompt):].strip()
@@ -27,10 +27,10 @@ class LLMUtils:
             # Basic cleaning
             response = re.sub(r'\n{3,}', '\n\n', response)
             response = re.sub(r'\s{2,}', ' ', response)
-            
+
             # Debug print
             print(f"Cleaned text length: {len(response)}")
-            
+
             return response
 
         except Exception as e:
@@ -50,7 +50,7 @@ class LLMUtils:
 
         for line in response.split('\n'):
             line = line.strip()
-            
+
             if line.startswith('#'):
                 if current_section:
                     sections[current_section] = current_content

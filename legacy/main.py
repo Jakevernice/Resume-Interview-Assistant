@@ -37,7 +37,7 @@ def main():
     if not api_key:
         st.error("Google API key not found. Please set the GOOGLE_API_KEY in a secrets.toml file or as an environment variable.")
         st.stop()
-    
+
     llm_service = GeminiService(api_key)
     pdf_processor = PDFProcessor()
     prompt_generator = PromptGenerator()
@@ -51,7 +51,7 @@ def main():
         - Generating relevant interview questions
         - Providing preparation recommendations
         """)
-        
+
         st.header("How to use")
         st.write("""
         1. Upload your resume (PDF format)
@@ -71,13 +71,13 @@ def main():
     with col2:
         st.header("Position Details")
         company_name = st.text_input("Company Name", value=st.session_state.get('company_name', ''))
-        
+
         # Role selection
-        role_name = st.text_input("Role/Position", 
+        role_name = st.text_input("Role/Position",
             placeholder="e.g., Frontend Developer, Data Scientist, DevOps Engineer",
             value=st.session_state.get('role_name', '')
         )
-        
+
         # Common role suggestions
         if not role_name:
             st.caption("Common roles:")
@@ -102,14 +102,14 @@ def main():
                     # Process PDF and extract structured data
                     resume_text = pdf_processor.extract_text(uploaded_file)
                     structured_data = pdf_processor.get_structured_data(resume_text)
-                    
+
                     # Store the inputs
                     st.session_state['company_name'] = company_name
                     st.session_state['role_name'] = role_name
-                    
+
                     # Generate and process response
                     prompt = prompt_generator.generate_interview_prompt(
-                        structured_data, 
+                        structured_data,
                         company_name,
                         role_name
                     )
@@ -119,32 +119,32 @@ def main():
                     if response:
                         formatted_initial_response = {"role": "assistant", "parts": [{"text": response.text if hasattr(response, 'text') else str(response)}]}
                         st.session_state.chat_history.append(formatted_initial_response)
-                    
+
                     # Display results
                     st.success(f"Analysis Complete for {role_name} position! 🎉")
-                    
+
                     tabs = st.tabs(["📊 Skills", "🎯 Interview Guide", "📝 Details"])
-                    
+
                     with tabs[0]:
                         st.subheader("Technical Skills")
                         skills_dict = structured_data.get('skills', {})
-                        
+
                         if skills_dict.get('languages'):
                             st.write("🔤 Programming Languages:")
                             st.write(", ".join(skills_dict['languages']))
-                        
+
                         if skills_dict.get('frameworks'):
                             st.write("🔧 Frameworks & Libraries:")
                             st.write(", ".join(skills_dict['frameworks']))
-                        
+
                         if skills_dict.get('tools'):
                             st.write("🛠️ Tools & Technologies:")
                             st.write(", ".join(skills_dict['tools']))
-                    
+
                     with tabs[1]:
                         st.subheader(f"AI Generated Interview Guide for {role_name}")
                         st.markdown(response)
-                    
+
                     with tabs[2]:
                         st.subheader("Resume Sections")
                         sections = structured_data.get('sections', {})
@@ -161,7 +161,7 @@ def main():
                                         st.info(f"No content found in {section_name}")
                         else:
                             st.warning("No sections found in the resume")
-                    
+
                     # Download button
                     st.markdown("---")
                     if response:
@@ -175,7 +175,7 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
                 st.error("Please try again or contact support if the problem persists.")
-    
+
     # Chat Interface
     st.markdown("---")
     st.header("Ask Follow-up Questions")
@@ -202,7 +202,7 @@ def main():
             # Pass the correctly formatted history to the chat function
         # Add a print statement here to inspect chat_history before the call
             print("Chat History before API call:", st.session_state.chat_history)
-            response = llm_service.chat_with_history(st.session_state.chat_history, prompt) 
+            response = llm_service.chat_with_history(st.session_state.chat_history, prompt)
             st.markdown(response)
 
             # Format the assistant's response for the chat history

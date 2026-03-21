@@ -12,7 +12,7 @@ class PDFProcessor:
             "Technical Skills": ["TECHNICAL SKILLS", "SKILLS", "TECHNOLOGIES", "TECHNICAL EXPERTISE"],
             "Certificates": ["CERTIFICATES", "CERTIFICATIONS", "COURSES", "ACHIEVEMENTS"]
         }
-        
+
         # Comprehensive skill patterns
         self.tech_patterns = {
             'languages': [
@@ -84,7 +84,7 @@ class PDFProcessor:
             'frameworks': set(),
             'tools': set()
         }
-        
+
         try:
             # First, try to extract from Technical Skills section
             skills_section = None
@@ -138,14 +138,14 @@ class PDFProcessor:
             sections_dict = {}
             current_section = None
             current_content = []
-            
+
             # Split text into lines and process
             lines = text.split('\n')
             for line in lines:
                 line = line.strip()
                 if not line:
                     continue
-                
+
                 # Check for section headers
                 section_match = None
                 for section_name, markers in self.sections.items():
@@ -199,8 +199,8 @@ class PDFProcessor:
         cleaned = []
         for line in content:
             line = line.strip()
-            if line and not any(marker.upper() in line.upper() 
-                              for markers in self.sections.values() 
+            if line and not any(marker.upper() in line.upper()
+                              for markers in self.sections.values()
                               for marker in markers):
                 # Remove bullet points and other common markers
                 line = re.sub(r'^[-•●■◆○*]+\s*', '', line)
@@ -218,7 +218,7 @@ class PDFProcessor:
                 'tools': []
             }
         }
-        
+
         # Validate sections
         if 'sections' in data and isinstance(data['sections'], dict):
             validated['sections'] = data['sections']

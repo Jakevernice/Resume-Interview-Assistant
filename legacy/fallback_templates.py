@@ -18,7 +18,7 @@ class RateLimiter:
         with self.lock:
             now = time.time()
             # Remove old requests
-            self.requests = [req for req in self.requests 
+            self.requests = [req for req in self.requests
                            if now - req < self.time_window]
             if len(self.requests) < self.capacity:
                 self.requests.append(now)
@@ -164,7 +164,7 @@ function ItemCreator() {
 
     const [item, setItem] = useState({});
 
-    
+
 
     const handleSubmit = async () => {
 
@@ -182,7 +182,7 @@ function ItemCreator() {
 
     };
 
-    
+
 
     return (
 
