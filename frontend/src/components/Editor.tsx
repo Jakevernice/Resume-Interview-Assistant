@@ -9,19 +9,19 @@
  */
 
 import React, { useRef } from 'react';
-import MonacoEditor, { OnMount } from '@monaco-editor/react';
+import MonacoEditor, { OnMount, Monaco } from '@monaco-editor/react';
 import { useStore } from '../store/useStore';
 import { useTheme } from '../store/ThemeProvider';
 
 const Editor: React.FC = () => {
   const { resume_latex, setResumeLatex } = useStore();
   const { theme } = useTheme();
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
 
   // Map app theme to Monaco built-in theme identifiers.
   const monacoTheme = theme === 'dark' ? 'xp-dark' : 'xp-light';
 
-  const handleBeforeMount = (monaco: any) => {
+  const handleBeforeMount = (monaco: Monaco) => {
     // Define classic high-fidelity Windows XP themes
     monaco.editor.defineTheme('xp-light', {
       base: 'vs',

@@ -63,8 +63,11 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
         }
       });
 
-      // Automatically move to next pending patch if available
-      const nextPending = updatedPatches.findIndex((p, idx) => idx > currentPatchIndex && p.status === 'pending');
+      // Automatically move to next pending patch if available (with wrap-around)
+      let nextPending = updatedPatches.findIndex((p, idx) => idx > currentPatchIndex && p.status === 'pending');
+      if (nextPending === -1) {
+        nextPending = updatedPatches.findIndex(p => p.status === 'pending');
+      }
       if (nextPending !== -1) {
         setCurrentPatchIndex(nextPending);
       } else if (updatedPatches.every(p => p.status !== 'pending')) {

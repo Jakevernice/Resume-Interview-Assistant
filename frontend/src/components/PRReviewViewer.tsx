@@ -19,7 +19,7 @@
 
 import React, { useMemo } from 'react';
 import { useStore } from '../store/useStore';
-import { DiffEditor } from '@monaco-editor/react';
+import { DiffEditor, Monaco } from '@monaco-editor/react';
 import { useTheme } from '../store/ThemeProvider';
 import { applyPatch } from '../services/api';
 import {
@@ -162,7 +162,7 @@ export const LaTeXDiffPane: React.FC<{
   const monacoTheme = theme === 'dark' ? 'xp-dark' : 'xp-light';
 
 
-  const handleBeforeMount = (monaco: any) => {
+  const handleBeforeMount = (monaco: Monaco) => {
     // Define classic high-fidelity Windows XP themes
     monaco.editor.defineTheme('xp-light', {
       base: 'vs',
@@ -466,8 +466,11 @@ const PRReviewViewer: React.FC = () => {
         }
       });
 
-      // Automatically move to next pending patch if available
-      const nextPending = updatedPatches.findIndex((p, idx) => idx > currentPatchIndex && p.status === 'pending');
+      // Automatically move to next pending patch if available (with wrap-around)
+      let nextPending = updatedPatches.findIndex((p, idx) => idx > currentPatchIndex && p.status === 'pending');
+      if (nextPending === -1) {
+        nextPending = updatedPatches.findIndex(p => p.status === 'pending');
+      }
       if (nextPending !== -1) {
         setCurrentPatchIndex(nextPending);
       }

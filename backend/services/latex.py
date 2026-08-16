@@ -12,6 +12,8 @@ DANGEROUS_LATEX_PATTERNS = [
     r"\\include\s*\{[^}]*[\/\\]",
     r"\\include\s*\{(?:\.\.|\/)",
     r"\\include\s+[^\s{}]+",
+    r"\\lstinputlisting",
+    r"\\VerbatimInput",
     r"\\openin",
     r"\\read\s*\d+",
     r"\\write18",
@@ -35,7 +37,7 @@ def sanitize_latex_source(source: str) -> None:
 
 def compile_latex_to_pdf(latex_source: str) -> bytes:
     """
-    Compiles LaTeX source code to a PDF byte stream using Tectonic.
+    Compiles LaTeX source code to a PDF byte stream using Tectonic in untrusted sandboxed mode.
     Sanitizes source before compilation to prevent local file inclusion.
     """
     sanitize_latex_source(latex_source)
@@ -46,9 +48,9 @@ def compile_latex_to_pdf(latex_source: str) -> bytes:
             f.write(latex_source)
 
         try:
-            # Tectonic compiles to PDF in one pass
+            # Tectonic compiles to PDF in one pass with untrusted sandboxing
             result = subprocess.run(
-                ["tectonic", input_file],
+                ["tectonic", "--untrusted", input_file],
                 cwd=temp_dir,
                 capture_output=True,
                 text=True,

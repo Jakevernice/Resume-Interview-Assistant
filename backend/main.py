@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Header, Depends, UploadFile, File
 from fastapi.responses import Response, JSONResponse
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 import dspy
 import json
 import logging
@@ -245,8 +245,9 @@ def get_byok_credentials(
 def init_dspy_lm(api_key: str, model: str = "gemini/gemini-2.0-flash") -> dspy.LM:
     """
     Instantiate the DSPy Language Model with the provided key and LiteLLM model identifier.
+    cache=False ensures zero server-side retention of user prompts and chat histories.
     """
-    return dspy.LM(model=model.strip(), api_key=api_key.strip(), max_retries=1)
+    return dspy.LM(model=model.strip(), api_key=api_key.strip(), max_retries=1, cache=False)
 
 # --- Endpoints ---
 

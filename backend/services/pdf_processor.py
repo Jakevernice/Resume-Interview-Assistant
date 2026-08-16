@@ -10,6 +10,7 @@ without managing shared resources.
 import io
 from typing import List
 
+import pypdf.errors
 from pypdf import PdfReader
 
 
@@ -35,14 +36,18 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     if not pdf_bytes:
         raise ValueError("pdf_bytes must not be empty.")
 
-    reader = PdfReader(io.BytesIO(pdf_bytes))
+    try:
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        page_texts: List[str] = []
+        for page in reader.pages:
+            text = page.extract_text() or ""
+            # Strip trailing whitespace per line but keep internal structure.
+            cleaned_lines = [line.rstrip() for line in text.splitlines()]
+            page_texts.append("\n".join(cleaned_lines).strip())
 
-    page_texts: List[str] = []
-    for page in reader.pages:
-        text = page.extract_text() or ""
-        # Strip trailing whitespace per line but keep internal structure.
-        cleaned_lines = [line.rstrip() for line in text.splitlines()]
-        page_texts.append("\n".join(cleaned_lines).strip())
-
-    # Join pages with a blank separator line; filter out completely blank pages.
-    return "\n\n".join(block for block in page_texts if block)
+        # Join pages with a blank separator line; filter out completely blank pages.
+        return "\n\n".join(block for block in page_texts if block)
+    except ValueError:
+        raise
+    except (pypdf.errors.PyPdfError, Exception) as exc:
+        raise ValueError("Uploaded file is not a valid or readable PDF document.") from exc

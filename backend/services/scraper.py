@@ -68,6 +68,15 @@ async def scrape_job_description(url: str) -> str:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
         })
 
+        async def handle_route(route):
+            try:
+                validate_public_url(route.request.url)
+                await route.continue_()
+            except Exception:
+                await route.abort()
+
+        await page.route("**/*", handle_route)
+
         try:
             # Increased timeout for complex job boards
             await page.goto(url, wait_until="domcontentloaded", timeout=45000)

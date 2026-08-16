@@ -186,8 +186,8 @@ export const useStore = create<AppState>()(
       appendSurgicalPatches: (patches) =>
         set((state) => {
             const newPatches = ensurePatchArray(patches);
-            const newReportItems = newPatches.map(p => ({
-                patch_index: state.surgical_patches.length + newPatches.indexOf(p),
+            const newReportItems = newPatches.map((p, index) => ({
+                patch_index: state.surgical_patches.length + index,
                 status: 'pending' as const,
                 reason_code: 'pending',
                 message: 'Patch suggested via chat.',
