@@ -148,7 +148,7 @@ export const useStore = create<AppState>()(
       applyEdit: (updates) =>
         set((state) => ({
           history: [
-            ...state.history,
+            ...state.history.slice(-29),
             {
               resume_latex: state.resume_latex,
               surgical_patches: [...state.surgical_patches],
@@ -195,6 +195,14 @@ export const useStore = create<AppState>()(
             }));
 
             return {
+                history: [
+                    ...state.history.slice(-29),
+                    {
+                        resume_latex: state.resume_latex,
+                        surgical_patches: [...state.surgical_patches],
+                        patch_report: { ...state.patch_report, items: [...state.patch_report.items] },
+                    },
+                ],
                 surgical_patches: [...state.surgical_patches, ...newPatches],
                 patch_report: {
                     ...state.patch_report,

@@ -10,6 +10,11 @@ def test_coerce_string_array_from_bullets():
     assert coerce_string_array(raw) == ["Jenkins", "Terraform", "Docker"]
 
 
+def test_coerce_string_array_from_code_fenced_json():
+    raw = '```json\n["Python", "FastAPI", "Docker"]\n```'
+    assert coerce_string_array(raw) == ["Python", "FastAPI", "Docker"]
+
+
 def test_coerce_patch_objects_validates_objects():
     raw = '[{"search_text":"A","replace_with":"B"}, {"search_text":""}, "bad"]'
     valid, parse_error, invalid = coerce_patch_objects(raw)

@@ -221,12 +221,25 @@ export const processResume = async (
 };
 
 export const compileLatex = async (latex: string, signal?: AbortSignal) => {
-  return api.post('/api/compile', {
-    resume_latex: latex
-  }, {
-    responseType: 'blob',
-    signal
-  });
+  try {
+    return await api.post('/api/compile', {
+      resume_latex: latex
+    }, {
+      responseType: 'blob',
+      signal
+    });
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: unknown } };
+    if (err?.response?.data instanceof Blob) {
+      try {
+        const text = await err.response.data.text();
+        err.response.data = JSON.parse(text);
+      } catch {
+        // Keep original blob if not valid JSON
+      }
+    }
+    throw error;
+  }
 };
 
 export const checkHealth = async () => {
@@ -279,11 +292,14 @@ export const applyPatch = async (
   resumeLatex: string,
   patches: SurgicalPatch[]
 ): Promise<{ updated_resume_latex: string; patch_report: PatchReport }> => {
-  const response = await api.post('/api/apply-patch', {
+  const response = await api.post<{ updated_resume_latex: unknown; patch_report: unknown }>('/api/apply-patch', {
     resume_latex: resumeLatex,
     patches
   });
-  return response.data;
+  return {
+    updated_resume_latex: toString(response.data.updated_resume_latex),
+    patch_report: normalizePatchReport(response.data.patch_report, patches.length),
+  };
 };
 
 export default api;

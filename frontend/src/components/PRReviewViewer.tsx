@@ -27,15 +27,16 @@ import {
   Check,
   AlertCircle,
   FileText,
+  MessageSquare,
 } from 'lucide-react';
 
 // ─── PDF Review Pane ──────────────────────────────────────────────────────────
 
 /**
- * Displays the extracted PDF text as read-only content.
+ * Displays the extracted PDF text as read-only content with AI critique annotations.
  */
 const PDFReviewPane: React.FC = () => {
-  const { extractedPdfText } = useStore();
+  const { extractedPdfText, critique } = useStore();
 
   // Split the extracted text into lines for the gutter numbering effect.
   const lines = useMemo(
@@ -73,8 +74,41 @@ const PDFReviewPane: React.FC = () => {
         overflowY: 'auto',
         padding: '16px 20px',
         backgroundColor: 'var(--color-bg-base)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
       }}
     >
+      {/* PR-Style AI Review Callout */}
+      {critique && (
+        <div
+          style={{
+            backgroundColor: 'var(--color-bg-subtle)',
+            border: '1px solid var(--color-border-strong)',
+            borderRadius: 'var(--radius-md)',
+            padding: '14px 16px',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <MessageSquare size={16} color="var(--color-accent)" />
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+              AI Resume Review Feedback
+            </span>
+          </div>
+          <div
+            style={{
+              fontSize: '13px',
+              lineHeight: 1.6,
+              color: 'var(--color-text-secondary)',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {critique}
+          </div>
+        </div>
+      )}
+
       {/* Extracted text with line numbers */}
       <div
         style={{

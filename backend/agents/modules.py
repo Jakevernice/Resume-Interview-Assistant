@@ -37,9 +37,10 @@ def coerce_string_array(value: Any) -> List[str]:
         if not raw:
             return []
 
-        # First preference: strict JSON array parsing.
+        # First preference: strict JSON array parsing (strip code fences if present)
+        clean_raw = _strip_code_fences(raw)
         try:
-            parsed = json.loads(raw)
+            parsed = json.loads(clean_raw)
             if isinstance(parsed, list):
                 return _unique_preserve_order(
                     [coerce_text(item).strip() for item in parsed if coerce_text(item).strip()]
@@ -298,12 +299,12 @@ class ResumeOrchestrator(dspy.Module):
     """
     Sequences the resume analysis and rebuilding process, producing surgical patches.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.analyzer = dspy.Predict(AnalyzeResume)
         self.rebuilder = dspy.ChainOfThought(RebuildResume)
 
-    def forward(self, resume_latex: str, job_description: str, input_mode: str = "latex"):
+    def forward(self, resume_latex: str, job_description: str, input_mode: str = "latex") -> dspy.Prediction:
         # 1. Analyze the resume
         analysis = self.analyzer(resume_latex=resume_latex, job_description=job_description)
         required_skills = coerce_string_array(getattr(analysis, "required_skills", []))

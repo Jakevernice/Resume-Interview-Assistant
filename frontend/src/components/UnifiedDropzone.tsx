@@ -100,22 +100,24 @@ const UnifiedDropzone: React.FC = () => {
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
+      if (isUploading) return;
       const file = e.dataTransfer.files[0];
       if (file) handleFile(file);
     },
-    [handleFile]
+    [handleFile, isUploading]
   );
 
   // ── Input change ───────────────────────────────────────────────────────────
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (isUploading) return;
       const file = e.target.files?.[0];
       if (file) handleFile(file);
       // Reset so the same file can be re-selected if needed.
       e.target.value = '';
     },
-    [handleFile]
+    [handleFile, isUploading]
   );
 
   // ── Render ─────────────────────────────────────────────────────────────────

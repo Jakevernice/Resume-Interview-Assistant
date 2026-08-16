@@ -38,6 +38,16 @@ def test_validate_public_url_blocks_private_and_loopback_ips():
     with pytest.raises(ValueError, match="blocked"):
         validate_public_url("http://172.16.5.1/jd")
 
+    # IPv4-mapped IPv6 addresses
+    with pytest.raises(ValueError, match="blocked"):
+        validate_public_url("http://[::ffff:169.254.169.254]/latest/meta-data/")
+
+    with pytest.raises(ValueError, match="blocked"):
+        validate_public_url("http://[::ffff:127.0.0.1]/admin")
+
+    with pytest.raises(ValueError, match="blocked"):
+        validate_public_url("http://[::ffff:10.0.0.1]/job")
+
 
 def test_validate_public_url_blocks_private_dns_resolutions():
     # Mock socket.getaddrinfo to simulate private IP resolutions

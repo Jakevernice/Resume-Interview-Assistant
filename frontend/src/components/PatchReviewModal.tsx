@@ -18,6 +18,7 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
   const { resume_latex, surgical_patches, patch_report, applyEdit } = useStore();
   const { theme } = useTheme();
   const [currentPatchIndex, setCurrentPatchIndex] = useState(0);
+  const [isApplying, setIsApplying] = useState(false);
 
   const patches = Array.isArray(surgical_patches) ? surgical_patches : [];
 
@@ -28,9 +29,11 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
   }, [currentPatchIndex, patches.length]);
 
   const handleApplyCurrent = async () => {
+    if (isApplying) return;
     const patch = patches[currentPatchIndex];
     if (!patch || patch.status === 'applied') return;
 
+    setIsApplying(true);
     try {
       const { updated_resume_latex, patch_report: newReport } = await applyPatch(resume_latex, [patch]);
       const outcome = newReport.items[0];
@@ -75,13 +78,17 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
       }
     } catch (err) {
       console.error("Failed to apply patch in PatchReviewModal", err);
+    } finally {
+      setIsApplying(false);
     }
   };
 
   const handleApplyAll = async () => {
+    if (isApplying) return;
     const pendingPatches = patches.filter(p => p.status === 'pending');
     if (pendingPatches.length === 0) return;
 
+    setIsApplying(true);
     try {
       const { updated_resume_latex, patch_report: newReport } = await applyPatch(resume_latex, pendingPatches);
 
@@ -132,6 +139,8 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
       onClose();
     } catch (err) {
       console.error("Failed to apply all patches in PatchReviewModal", err);
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -395,7 +404,7 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               onClick={handleApplyAll}
-              disabled={!hasPatches || patches.every(p => p.status === 'applied')}
+              disabled={!hasPatches || patches.every(p => p.status === 'applied') || isApplying}
               title="Apply all pending changes to your LaTeX resume."
               style={{
                 padding: '8px 16px',
@@ -405,16 +414,16 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                 color: 'var(--color-text-secondary)',
                 fontSize: '11px',
                 fontWeight: 700,
-                cursor: !hasPatches || patches.every(p => p.status === 'applied') ? 'not-allowed' : 'pointer',
-                opacity: !hasPatches || patches.every(p => p.status === 'applied') ? 0.4 : 1,
+                cursor: !hasPatches || patches.every(p => p.status === 'applied') || isApplying ? 'not-allowed' : 'pointer',
+                opacity: !hasPatches || patches.every(p => p.status === 'applied') || isApplying ? 0.4 : 1,
                 boxShadow: 'var(--shadow-sm)',
               }}
             >
-              APPLY ALL
+              {isApplying ? 'APPLYING...' : 'APPLY ALL'}
             </button>
             <button
               onClick={handleApplyCurrent}
-              disabled={!hasPatches || !isMatchFound || isApplied}
+              disabled={!hasPatches || !isMatchFound || isApplied || isApplying}
               title="Apply this change to your LaTeX resume."
               style={{
                 padding: '8px 20px',
@@ -424,8 +433,8 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                 fontSize: '11px',
                 fontWeight: 700,
                 border: 'none',
-                cursor: !hasPatches || !isMatchFound || isApplied ? 'not-allowed' : 'pointer',
-                opacity: !hasPatches || !isMatchFound || isApplied ? 0.5 : 1,
+                cursor: !hasPatches || !isMatchFound || isApplied || isApplying ? 'not-allowed' : 'pointer',
+                opacity: !hasPatches || !isMatchFound || isApplied || isApplying ? 0.5 : 1,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
@@ -433,7 +442,7 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
               }}
             >
               <Check size={14} />
-              {isApplied ? 'ALREADY APPLIED' : 'APPLY & CONTINUE'}
+              {isApplied ? 'ALREADY APPLIED' : isApplying ? 'APPLYING...' : 'APPLY & CONTINUE'}
             </button>
           </div>
         </div>

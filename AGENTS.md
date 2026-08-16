@@ -11,7 +11,7 @@ An AI-driven application that optimizes and rebuilds LaTeX resumes tailored to s
 - **Backend** (`backend/`):
   - **Framework**: FastAPI (Python 3.10+)
   - **Agentic Engine**: DSPy (`dspy-ai`) configured for Google Gemini models (BYOK: Bring-Your-Own-Key via `x-gemini-api-key` header)
-  - **LaTeX Engine**: TeX Live / `pdflatex` subprocess for compiling LaTeX to PDF
+  - **LaTeX Engine**: Tectonic (untrusted sandboxed mode) / TeX Live for compiling LaTeX to PDF
   - **PDF & Scraping**: `pypdf` for text extraction; Playwright / BeautifulSoup for job URL scraping
 - **Frontend** (`frontend/`):
   - **Framework**: React 18 + Vite + TypeScript

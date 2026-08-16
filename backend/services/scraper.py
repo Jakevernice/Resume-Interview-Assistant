@@ -3,9 +3,30 @@ import ipaddress
 import logging
 import socket
 from urllib.parse import urlparse
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, Route
 
 logger = logging.getLogger("scraper_service")
+
+
+def validate_ip_address(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> None:
+    """
+    Validates that an IP address is not private, loopback, link-local, or restricted.
+    Unwraps IPv4-mapped IPv6 addresses before evaluation.
+    """
+    if isinstance(ip_obj, ipaddress.IPv6Address) and ip_obj.ipv4_mapped:
+        ip_obj = ip_obj.ipv4_mapped
+
+    if (
+        ip_obj.is_private
+        or ip_obj.is_loopback
+        or ip_obj.is_link_local
+        or ip_obj.is_multicast
+        or ip_obj.is_reserved
+        or ip_obj.is_unspecified
+    ):
+        raise ValueError(
+            "Access to internal or restricted network address is blocked."
+        )
 
 
 def validate_public_url(url_str: str) -> None:
@@ -39,17 +60,41 @@ def validate_public_url(url_str: str) -> None:
         except ValueError:
             raise ValueError(f"Invalid IP address resolved: {ip_str}")
 
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_multicast
-            or ip.is_reserved
-            or ip.is_unspecified
-        ):
-            raise ValueError(
-                f"Access to internal or restricted network address is blocked."
-            )
+        validate_ip_address(ip)
+
+
+async def validate_public_url_async(url_str: str) -> None:
+    """
+    Non-blocking async version of validate_public_url using the running asyncio event loop.
+    """
+    if not url_str or not isinstance(url_str, str):
+        raise ValueError("URL must be a non-empty string.")
+
+    parsed = urlparse(url_str.strip())
+    if parsed.scheme.lower() not in ("http", "https"):
+        raise ValueError("Only HTTP and HTTPS URLs are permitted.")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("Invalid URL: missing hostname.")
+
+    loop = asyncio.get_running_loop()
+    try:
+        addr_infos = await loop.getaddrinfo(hostname, None)
+    except socket.gaierror as exc:
+        raise ValueError(f"Could not resolve host: {hostname}") from exc
+
+    if not addr_infos:
+        raise ValueError(f"No IP addresses resolved for host: {hostname}")
+
+    for addr_info in addr_infos:
+        ip_str = addr_info[4][0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            raise ValueError(f"Invalid IP address resolved: {ip_str}")
+
+        validate_ip_address(ip)
 
 
 async def scrape_job_description(url: str) -> str:
@@ -68,9 +113,9 @@ async def scrape_job_description(url: str) -> str:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
         })
 
-        async def handle_route(route):
+        async def handle_route(route: Route) -> None:
             try:
-                validate_public_url(route.request.url)
+                await validate_public_url_async(route.request.url)
                 await route.continue_()
             except Exception:
                 await route.abort()

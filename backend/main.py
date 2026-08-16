@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Header, Depends, UploadFile, File
 from fastapi.responses import Response, JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any, Tuple
+import asyncio
 import dspy
 import json
 import logging
@@ -280,51 +281,54 @@ async def process_resume(
     orchestrator = ResumeOrchestrator()
     endpoint = "/api/process"
 
-    try:
+    def _run_orchestrator():
         with dspy.context(lm=lm):
-            result = orchestrator(
+            return orchestrator(
                 resume_latex=request.resume_latex,
                 job_description=job_desc,
                 input_mode=request.input_mode or "latex"
             )
 
-            critique = _ensure_string_field(endpoint, "critique", getattr(result, "critique", ""))
-            required_skills = _ensure_string_array_field(
-                endpoint,
-                "required_skills",
-                getattr(result, "required_skills", []),
-            )
-            missing_keywords = _ensure_string_array_field(
-                endpoint,
-                "missing_keywords",
-                getattr(result, "missing_keywords", []),
-            )
-            updated_resume_latex = _ensure_string_field(
-                endpoint,
-                "updated_resume_latex",
-                getattr(result, "updated_resume_latex", request.resume_latex),
-            )
-            surgical_patches = _ensure_patch_list_field(
-                endpoint,
-                "surgical_patches",
-                getattr(result, "surgical_patches", []),
-            )
-            patch_report = _ensure_patch_report_field(
-                endpoint,
-                "patch_report",
-                getattr(result, "patch_report", {}),
-                total_patches=len(surgical_patches),
-            )
+    try:
+        result = await asyncio.to_thread(_run_orchestrator)
 
-            return ProcessResponseModel(
-                critique=critique,
-                required_skills=required_skills,
-                missing_keywords=missing_keywords,
-                updated_resume_latex=updated_resume_latex,
-                surgical_patches=surgical_patches,
-                patch_report=patch_report,
-                job_description=coerce_text(job_desc),
-            )
+        critique = _ensure_string_field(endpoint, "critique", getattr(result, "critique", ""))
+        required_skills = _ensure_string_array_field(
+            endpoint,
+            "required_skills",
+            getattr(result, "required_skills", []),
+        )
+        missing_keywords = _ensure_string_array_field(
+            endpoint,
+            "missing_keywords",
+            getattr(result, "missing_keywords", []),
+        )
+        updated_resume_latex = _ensure_string_field(
+            endpoint,
+            "updated_resume_latex",
+            getattr(result, "updated_resume_latex", request.resume_latex),
+        )
+        surgical_patches = _ensure_patch_list_field(
+            endpoint,
+            "surgical_patches",
+            getattr(result, "surgical_patches", []),
+        )
+        patch_report = _ensure_patch_report_field(
+            endpoint,
+            "patch_report",
+            getattr(result, "patch_report", {}),
+            total_patches=len(surgical_patches),
+        )
+
+        return ProcessResponseModel(
+            critique=critique,
+            required_skills=required_skills,
+            missing_keywords=missing_keywords,
+            updated_resume_latex=updated_resume_latex,
+            surgical_patches=surgical_patches,
+            patch_report=patch_report,
+            job_description=coerce_text(job_desc),
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -341,7 +345,7 @@ async def compile_resume(request: CompileRequest) -> Response:
     Instantly compiles LaTeX to PDF using Tectonic with structured error handling.
     """
     try:
-        pdf_bytes = compile_latex_to_pdf(request.resume_latex)
+        pdf_bytes = await asyncio.to_thread(compile_latex_to_pdf, request.resume_latex)
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
@@ -386,7 +390,7 @@ async def extract_pdf_text(file: UploadFile = File(...)) -> ExtractPdfResponse:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
     try:
-        text = extract_text_from_pdf(pdf_bytes)
+        text = await asyncio.to_thread(extract_text_from_pdf, pdf_bytes)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
@@ -415,10 +419,13 @@ async def analyze_section(
 
     analyzer = dspy.Predict(SectionAnalyzer)
 
-    try:
+    def _run_analyzer():
         with dspy.context(lm=lm):
-            result = analyzer(section_latex=request.section_latex, job_description=request.job_description)
-            return SectionAnalysisResponse(feedback=getattr(result, "feedback", ""))
+            return analyzer(section_latex=request.section_latex, job_description=request.job_description)
+
+    try:
+        result = await asyncio.to_thread(_run_analyzer)
+        return SectionAnalysisResponse(feedback=getattr(result, "feedback", ""))
     except HTTPException:
         raise
     except Exception as e:
@@ -444,30 +451,33 @@ async def chat_with_assistant(
     # Format chat history for DSPy context
     history_str = "\n".join([f"{msg.role}: {msg.content}" for msg in request.chat_history])
 
-    try:
+    def _run_chat():
         with dspy.context(lm=lm):
-            result = predictor(
+            return predictor(
                 chat_history=history_str,
                 resume_content=request.resume_content,
                 input_mode=request.input_mode,
                 user_message=request.message
             )
 
-            # Coerce patches if any were suggested
-            valid_patches, _, _ = coerce_patch_objects(
-                getattr(result, "suggested_patches", "[]")
-            )
+    try:
+        result = await asyncio.to_thread(_run_chat)
 
-            return ChatResponse(
-                response_text=getattr(result, "response_text", ""),
-                suggested_patches=[
-                    SurgicalPatchModel(
-                        search_text=p["search_text"],
-                        replace_with=p["replace_with"]
-                    )
-                    for p in valid_patches
-                ]
-            )
+        # Coerce patches if any were suggested
+        valid_patches, _, _ = coerce_patch_objects(
+            getattr(result, "suggested_patches", "[]")
+        )
+
+        return ChatResponse(
+            response_text=getattr(result, "response_text", ""),
+            suggested_patches=[
+                SurgicalPatchModel(
+                    search_text=p["search_text"],
+                    replace_with=p["replace_with"]
+                )
+                for p in valid_patches
+            ]
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -487,7 +497,7 @@ async def apply_patch(request: ApplyPatchRequest) -> ApplyPatchResponse:
         {"search_text": p.search_text, "replace_with": p.replace_with}
         for p in request.patches
     ]
-    updated_latex, report = apply_deterministic_patches(request.resume_latex, patches_dict)
+    updated_latex, report = await asyncio.to_thread(apply_deterministic_patches, request.resume_latex, patches_dict)
     endpoint = "/api/apply-patch"
     normalized_report = _ensure_patch_report_field(
         endpoint,
