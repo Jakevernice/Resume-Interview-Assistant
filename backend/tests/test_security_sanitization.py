@@ -103,7 +103,7 @@ def test_process_endpoint_requires_api_key():
         "job_description": "Software Engineer"
     })
     assert response.status_code == 401
-    assert response.json()["detail"] == "X-Gemini-API-Key header is missing."
+    assert "API key is missing" in response.json()["detail"]
 
 
 def test_analyze_section_requires_api_key():
@@ -112,7 +112,7 @@ def test_analyze_section_requires_api_key():
         "job_description": "Python Developer"
     })
     assert response.status_code == 401
-    assert response.json()["detail"] == "X-Gemini-API-Key header is missing."
+    assert "API key is missing" in response.json()["detail"]
 
 
 def test_compile_endpoint_rejects_malicious_latex():

@@ -1,19 +1,41 @@
-# TODO & Known Issues
+# Project Progress, Completed Features & Operational Notes
 
-## The health endpoint is taking 1 min 30 seconds to respond for a completely new instance.
+## Completed Features & Enhancements
 
-## Could there be a faster way to compile and show the tex? (Probably not since overleaf also gives the same issue)
+- [x] **Phase 4: UI/UX Refinement & Layout Consolidation**
+  - Standardized Windows XP retro styling across all components (Luna Light & Royale Noir themes).
+  - Workspace layout structured with 60/40 editor-chat split, clean scroll containers, and clear error banners.
 
-## Yet to implement phase 4.
+- [x] **LaTeX Staging & Diff Review Workflow (No Auto-Apply)**
+  - Patches are no longer auto-applied to the source code upon generation.
+  - `ResumeOrchestrator` returns patches in `pending` state; user can review original text (LHS) vs replacement (RHS) in `PatchReviewModal` and `PRReviewViewer`.
+  - Chat-suggested edits are automatically staged with a counter badge (`{N} edit(s) staged for review`), removing redundant inline apply buttons.
+  - Sidebar "Review Surgical Patches" button dynamically highlights and indicates pending patch counts.
 
-## Need to iron out one bug/enhancement with tex input which is that patches are auto-applied, so whatever diff is shown in screen, the LHS always is empty cause the text is already gone, We should ideally give the user control over what should be applied and what shouldn't be, Review surgical patches should show the diff and only when they accept the edit will be made. Same should apply for the chatbot. Currently there's only the "Apply surgical patches" which is fine, But I have no area to review it. We should show that patch also in the review patches screen. To make it intuitive we can instead remove the multiple apply surgical patches buttons in the chatbot area and tell the user we have suggested the changes and maybe highlight the existing review surigcal patches section with a glow or +1 symbol of sorts (We can consider which is more akin to windows XP)
+- [x] **"Start New Session" Action**
+  - Added a dedicated "Start New Session" button with confirmation prompt in the sidebar footer.
+  - Resets all resume content, job description, analysis results, and IndexedDB cache while preserving API key and model selection.
 
-## theres no way to clear and start over. It's a clear cookies that would do it. We just need a Start New session button that clears everything but keeps the API key details. (Would have to confirm again to start a new session)
+- [x] **Context-Aware PDF vs LaTeX AI Flow**
+  - In PDF mode, `ResumeOrchestrator` and `ChatAssistant` bypass LaTeX surgical patch generation and output high-level changelog guidance directly in the text response.
+  - Gutter line-numbered read-only view in `PRReviewViewer`.
 
-## AI Critique and AI comment no 1 are the same thing, We should probably remove it. I might have told gemini to do that with the preface that we would interact with it in a non chat manner and it would give comments like a PR reviewer but that's too token intensive and not worth the cost.
+- [x] **AI Critique / Comment Redundancy Cleanup**
+  - Consolidated analysis output into a single clean AI Critique panel in the sidebar, eliminating redundant duplicated comment cards.
 
-## In cases of PDF based responses, we should not be giving AI the prompt to make surgical patches change, it should give the changelog suggestion itself as the output that way the user would know what to modify.
+- [x] **Vendor-Agnostic Model Selection (BYOK)**
+  - Universal BYOK support for Gemini, OpenAI, Claude, Groq, xAI, and DeepSeek.
+  - Added preset chips in `APIKeyGuard` with documentation link to LiteLLM supported models.
+  - Dynamic `dspy.LM(model=..., api_key=...)` initialization via `X-Model` and `X-API-Key` headers.
 
-## While I know maintainability is a cat and mouse chase I should atleast deploy it without any deprecated module.
+- [x] **Dependency Cleanup**
+  - Removed deprecated `google-generativeai` direct dependency in favor of LiteLLM orchestration.
 
-## Final phase should be to iron out all bugs and make it vendor agnostic (For 3 options, Gemini, Claude and OpenAI). User would input a Model (By default we populate some examples for Gemini, Claude and OpenAI but just so user knows, we can give the links for the models list as well for each of them).
+---
+
+## Operational Notes & Performance
+
+- **Cold-Start Latency on Free Hosting Instances**:
+  - The `/health` endpoint handler is minimal and returns immediately ($O(1)$). Any 1-2 minute delays observed on newly spawned cloud instances are caused by platform container spin-up / waking from sleep on free-tier hosting providers.
+- **LaTeX Compilation Overhead**:
+  - Tectonic compilation runs via isolated subprocesses with automatic sanitization. Compilation debounce and manual compilation triggers are active to avoid unnecessary compiler invocations.

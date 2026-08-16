@@ -122,7 +122,7 @@ const Preview: React.FC = () => {
               onClick={handleDownloadLatex}
               disabled={!resume_latex}
               className="p-2 bg-white border border-slate-200 rounded-md shadow-sm hover:bg-slate-50 transition-colors text-slate-600 disabled:opacity-50"
-              title="Download LaTeX Source"
+              title="Download the resume source as a .tex file."
             >
               <FileCode className="w-4 h-4" />
             </button>
@@ -130,7 +130,7 @@ const Preview: React.FC = () => {
               onClick={handleDownloadPdf}
               disabled={!pdfBlob || isLoading}
               className="p-2 bg-white border border-slate-200 rounded-md shadow-sm hover:bg-slate-50 transition-colors text-slate-600 disabled:opacity-50"
-              title="Download PDF"
+              title="Download the resume as a PDF file."
             >
               <Download className="w-4 h-4" />
             </button>
@@ -138,7 +138,7 @@ const Preview: React.FC = () => {
               onClick={handleCompile}
               disabled={isLoading}
               className="p-2 bg-white border border-slate-200 rounded-md shadow-sm hover:bg-slate-50 transition-colors text-slate-600 disabled:opacity-50"
-              title="Force Recompile"
+              title="Recompile the LaTeX code to update the PDF preview."
             >
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             </button>

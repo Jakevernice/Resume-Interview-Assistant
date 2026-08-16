@@ -269,6 +269,7 @@ export const LaTeXDiffPane: React.FC<{
           <button
             onClick={() => onNavigate(Math.max(0, currentPatchIndex - 1))}
             disabled={!hasPatches || currentPatchIndex === 0}
+            title="Show the previous suggested change."
             style={{
               fontSize: '11px',
               fontWeight: 700,
@@ -284,6 +285,7 @@ export const LaTeXDiffPane: React.FC<{
           <button
             onClick={() => onNavigate(Math.min(patches.length - 1, currentPatchIndex + 1))}
             disabled={!hasPatches || currentPatchIndex === patches.length - 1}
+            title="Show the next suggested change."
             style={{
               fontSize: '11px',
               fontWeight: 700,
@@ -361,6 +363,7 @@ export const LaTeXDiffPane: React.FC<{
         <button
           onClick={onAcceptAll}
           disabled={!hasPatches || patches.every(p => p.status === 'applied')}
+          title="Apply all pending changes to your LaTeX resume."
           style={{
             padding: '7px 16px',
             fontSize: '11px',
@@ -384,6 +387,7 @@ export const LaTeXDiffPane: React.FC<{
         <button
           onClick={onAcceptCurrent}
           disabled={!hasPatches || !isMatchFound || isApplied}
+          title="Apply this change to your LaTeX resume."
           style={{
             padding: '7px 20px',
             fontSize: '11px',

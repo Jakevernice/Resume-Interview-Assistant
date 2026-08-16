@@ -9,7 +9,6 @@ jinja2
 python-multipart
 # Pinning litellm to avoid resolution depth issues known in dspy-ai versions
 litellm<1.82.0
-google-generativeai
 # PDF text extraction (dual-mode input support)
 pypdf
 pytest

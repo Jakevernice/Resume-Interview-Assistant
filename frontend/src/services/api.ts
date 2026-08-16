@@ -199,15 +199,20 @@ export const processResume = async (
   jobUrl?: string,
   jobDesc?: string,
   apiKey?: string,
+  model?: string,
+  inputMode: string = 'latex',
   signal?: AbortSignal
 ) => {
   const response = await api.post('/api/process', {
     resume_latex: latex,
     job_url: jobUrl,
-    job_description: jobDesc
+    job_description: jobDesc,
+    input_mode: inputMode
   }, {
     headers: {
-      'X-Gemini-API-Key': apiKey
+      'X-API-Key': apiKey,
+      'X-Model': model || 'gemini/gemini-2.0-flash',
+      'X-Gemini-API-Key': apiKey // backwards compatibility
     },
     signal
   });
@@ -252,7 +257,8 @@ export const sendChatMessage = async (
   message: string,
   resumeContent: string,
   inputMode: string,
-  apiKey: string
+  apiKey: string,
+  model?: string
 ): Promise<ChatResponse> => {
   const response = await api.post<ChatResponse>('/api/chat', {
     chat_history: history.map(({ role, content }) => ({ role, content })),
@@ -261,6 +267,8 @@ export const sendChatMessage = async (
     input_mode: inputMode
   }, {
     headers: {
+      'X-API-Key': apiKey,
+      'X-Model': model || 'gemini/gemini-2.0-flash',
       'X-Gemini-API-Key': apiKey
     }
   });

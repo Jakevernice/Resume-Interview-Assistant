@@ -87,8 +87,9 @@ class AppErrorBoundary extends React.Component<
 // ─── API Key guard ────────────────────────────────────────────────────────────
 
 const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { apiKey, setApiKey } = useAuth();
+  const { apiKey, model, setCredentials } = useAuth();
   const [inputKey, setInputKey] = useState('');
+  const [inputModel, setInputModel] = useState(model || 'gemini/gemini-2.0-flash');
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,7 +101,7 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     try {
       const res = await checkHealth();
       if (res.data.status === 'healthy') {
-        setApiKey(inputKey);
+        setCredentials(inputKey, inputModel.trim() || 'gemini/gemini-2.0-flash');
       } else {
         setError('Backend is not responding correctly.');
       }
@@ -110,6 +111,15 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       setIsValidating(false);
     }
   };
+
+  const modelPresets = [
+    { label: 'gemini/gemini-2.0-flash', id: 'gemini/gemini-2.0-flash' },
+    { label: 'openai/gpt-4o-mini', id: 'openai/gpt-4o-mini' },
+    { label: 'anthropic/claude-3-5-sonnet', id: 'anthropic/claude-3-5-sonnet-20241022' },
+    { label: 'groq/llama-3.3-70b', id: 'groq/llama-3.3-70b-versatile' },
+    { label: 'xai/grok-2', id: 'xai/grok-2' },
+    { label: 'deepseek/deepseek-chat', id: 'deepseek/deepseek-chat' },
+  ];
 
   return (
     <div
@@ -128,15 +138,15 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         style={{
           backgroundColor: 'var(--color-bg-base)',
           border: '1px solid var(--color-border)',
-          padding: '32px',
-          maxWidth: '420px',
+          padding: '28px 32px',
+          maxWidth: '460px',
           width: '100%',
           borderRadius: 'var(--radius-md)',
           boxShadow: 'var(--shadow-md)',
         }}
       >
         {/* Header row – brand + theme toggle */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
@@ -148,11 +158,11 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <KeyRound size={24} color="var(--color-accent)" />
             </div>
             <div>
-              <h1 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>
-                Access Required
+              <h1 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>
+                Universal Model BYOK
               </h1>
-              <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-                Enter your Gemini API Key to begin.
+              <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                Select your LLM model and provide your API key.
               </p>
             </div>
           </div>
@@ -160,13 +170,80 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <ThemeToggle />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Model Name Input */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <label
+                htmlFor="model-input"
+                style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)' }}
+              >
+                Model Name
+              </label>
+              <a
+                href="https://docs.litellm.ai/docs/providers"
+                target="_blank"
+                rel="noreferrer"
+                title="Open the documentation to see the list of supported providers and model names."
+                style={{ fontSize: '10px', color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600 }}
+              >
+                View Supported Models ↗
+              </a>
+            </div>
+            <input
+              id="model-input"
+              type="text"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                backgroundColor: 'var(--color-bg-base)',
+                color: 'var(--color-text-primary)',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
+              placeholder="provider/model_name (e.g. gemini/gemini-2.0-flash)"
+              value={inputModel}
+              onChange={(e) => setInputModel(e.target.value)}
+              title="Type the model name in the &quot;provider/model_name&quot; format. Example: gemini/gemini-2.0-flash or openai/gpt-4o."
+            />
+
+            {/* Quick preset chips */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
+              {modelPresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => setInputModel(preset.id)}
+                  title={`Select the ${preset.label} model.`}
+                  style={{
+                    padding: '2px 6px',
+                    fontSize: '10px',
+                    fontFamily: 'Tahoma, sans-serif',
+                    backgroundColor: inputModel === preset.id ? 'var(--color-accent)' : 'var(--color-bg-subtle)',
+                    color: inputModel === preset.id ? 'var(--color-text-inverse)' : 'var(--color-text-secondary)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    transition: 'all 120ms ease',
+                  }}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* API Key Input */}
           <div>
             <label
               htmlFor="api-key-input"
-              style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '4px' }}
+              style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '4px' }}
             >
-              Google Gemini API Key
+              API Key
             </label>
             <input
               id="api-key-input"
@@ -176,21 +253,22 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 padding: '8px 12px',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-sm)',
-                fontSize: '13px',
+                fontSize: '12px',
                 backgroundColor: 'var(--color-bg-base)',
                 color: 'var(--color-text-primary)',
                 outline: 'none',
                 boxSizing: 'border-box',
               }}
-              placeholder="AIza..."
+              placeholder="API Key (AIza..., sk-..., etc.)"
               value={inputKey}
               onChange={(e) => setInputKey(e.target.value)}
+              title="Type your API key. The application keeps the key in memory and does not save it on the server."
             />
           </div>
 
           <div
             style={{
-              padding: '10px 12px',
+              padding: '8px 10px',
               backgroundColor: 'var(--color-bg-subtle)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-sm)',
@@ -200,9 +278,8 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             }}
           >
             <ShieldCheck size={14} color="var(--color-text-muted)" style={{ marginTop: '1px', flexShrink: 0 }} />
-            <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-              <strong>Zero-Retention Policy:</strong> Your key is stored strictly in memory.
-              Refreshing the page will clear it. We never persist or log your credentials.
+            <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+              <strong>Zero-Retention Policy:</strong> Your key and model settings are kept strictly in browser memory.
             </p>
           </div>
 
@@ -214,7 +291,7 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 alignItems: 'center',
                 color: 'var(--color-danger)',
                 backgroundColor: 'var(--color-danger-subtle)',
-                padding: '10px 12px',
+                padding: '8px 10px',
                 borderRadius: 'var(--radius-sm)',
                 border: '1px solid var(--color-danger)',
               }}
@@ -227,17 +304,18 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <button
             id="connect-button"
             onClick={handleConnect}
-            disabled={!inputKey || isValidating}
+            disabled={!inputKey || !inputModel.trim() || isValidating}
+            title="Select to start the application with your API key."
             style={{
               width: '100%',
-              backgroundColor: !inputKey || isValidating ? 'var(--color-border-strong)' : 'var(--color-accent)',
+              backgroundColor: !inputKey || !inputModel.trim() || isValidating ? 'var(--color-border-strong)' : 'var(--color-accent)',
               color: 'var(--color-text-inverse)',
               padding: '9px',
               borderRadius: 'var(--radius-sm)',
               fontWeight: 600,
-              fontSize: '13px',
+              fontSize: '12px',
               border: 'none',
-              cursor: !inputKey || isValidating ? 'not-allowed' : 'pointer',
+              cursor: !inputKey || !inputModel.trim() || isValidating ? 'not-allowed' : 'pointer',
               transition: 'background-color 150ms ease',
             }}
           >
@@ -253,7 +331,7 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const Workspace: React.FC = () => {
   const { inputMode, setUploadedPdfUrl, history, undoEdit } = useStore();
-  const { setApiKey } = useAuth();
+  const { setApiKey, model } = useAuth();
 
   // Rehydrate uploaded PDF visual preview on boot
   React.useEffect(() => {
@@ -332,6 +410,21 @@ const Workspace: React.FC = () => {
               {editorPaneLabel}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--color-border)',
+                  backgroundColor: 'var(--color-bg-base)',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  color: 'var(--color-accent)',
+                  fontFamily: 'monospace',
+                }}
+                title={`Active Model: ${model}`}
+              >
+                {model}
+              </span>
               {inputMode === 'latex' && (
                 <button
                   onClick={undoEdit}
@@ -351,7 +444,7 @@ const Workspace: React.FC = () => {
                     transition: 'all 150ms ease',
                     opacity: history.length === 0 ? 0.5 : 1
                   }}
-                  title="Undo last change (source and patches)"
+                  title="Cancel the last change and restore the previous resume text."
                 >
                   <RotateCcw size={12} />
                   Undo ({history.length})
@@ -373,10 +466,10 @@ const Workspace: React.FC = () => {
                   cursor: 'pointer',
                   transition: 'all 150ms ease',
                 }}
-                title="Change API Key"
+                title="Change your API key or model, or disconnect the session."
               >
                 <LogOut size={12} />
-                Change Key
+                Change Model / Key
               </button>
               <ThemeToggle />
             </div>

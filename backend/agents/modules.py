@@ -303,13 +303,30 @@ class ResumeOrchestrator(dspy.Module):
         self.analyzer = dspy.Predict(AnalyzeResume)
         self.rebuilder = dspy.ChainOfThought(RebuildResume)
 
-    def forward(self, resume_latex: str, job_description: str):
+    def forward(self, resume_latex: str, job_description: str, input_mode: str = "latex"):
         # 1. Analyze the resume
         analysis = self.analyzer(resume_latex=resume_latex, job_description=job_description)
         required_skills = coerce_string_array(getattr(analysis, "required_skills", []))
         missing_keywords = coerce_string_array(getattr(analysis, "missing_keywords", []))
 
-        # 2. Rebuild the resume based on the analysis and missing keywords
+        # In PDF mode or plain text input, we only critique and do not generate LaTeX surgical patches
+        if input_mode == "pdf" or ("\\documentclass" not in resume_latex and "\\begin{document}" not in resume_latex):
+            return dspy.Prediction(
+                critique=coerce_text(getattr(analysis, "critique", "")),
+                required_skills=required_skills,
+                missing_keywords=missing_keywords,
+                updated_resume_latex=resume_latex,
+                surgical_patches=[],
+                patch_report={
+                    "total_patches": 0,
+                    "applied_patches": 0,
+                    "failed_patches": 0,
+                    "parse_failure": False,
+                    "items": [],
+                },
+            )
+
+        # 2. Rebuild the resume based on the analysis and missing keywords (LaTeX mode only)
         rebuild_result = self.rebuilder(
             resume_latex=resume_latex,
             critique=analysis.critique,

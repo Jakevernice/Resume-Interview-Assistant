@@ -8,4 +8,5 @@ python-dotenv
 httpx
 jinja2
 python-multipart
-google-generativeai
+pytest
+

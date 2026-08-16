@@ -135,6 +135,7 @@ const UnifiedDropzone: React.FC = () => {
         role="button"
         tabIndex={0}
         aria-label="Upload resume: drop a PDF or LaTeX file here, or click to browse"
+        title="Drop a .tex or .pdf file here, or select to browse your files."
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -195,6 +196,7 @@ const UnifiedDropzone: React.FC = () => {
         {/* Supported format badges */}
         <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
           <span
+            title="PDF resume mode: extracts plain text for review."
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -214,6 +216,7 @@ const UnifiedDropzone: React.FC = () => {
             PDF
           </span>
           <span
+            title="LaTeX resume mode: enables code editor and surgical patches."
             style={{
               display: 'flex',
               alignItems: 'center',

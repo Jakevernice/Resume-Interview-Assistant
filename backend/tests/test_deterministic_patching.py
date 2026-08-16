@@ -77,3 +77,34 @@ def test_apply_patches_reports_duplicate_ambiguity():
     assert report["applied_patches"] == 0
     assert report["failed_patches"] == 1
     assert report["items"][0]["reason_code"] == "duplicate_ambiguity"
+
+
+def test_resume_orchestrator_bypasses_patches_in_pdf_mode():
+    from unittest.mock import MagicMock, patch
+    from backend.agents.modules import ResumeOrchestrator
+    import dspy
+
+    orchestrator = ResumeOrchestrator()
+    mock_analyzer = MagicMock()
+    mock_analyzer.return_value = dspy.Prediction(
+        critique="Good resume",
+        required_skills=["Python", "Docker"],
+        missing_keywords=["Kubernetes"]
+    )
+    orchestrator.analyzer = mock_analyzer
+    orchestrator.rebuilder = MagicMock()
+
+    result = orchestrator(
+        resume_latex="Extracted plain text from resume without latex tags",
+        job_description="Python Software Engineer",
+        input_mode="pdf"
+    )
+
+    assert result.critique == "Good resume"
+    assert result.required_skills == ["Python", "Docker"]
+    assert result.missing_keywords == ["Kubernetes"]
+    assert result.surgical_patches == []
+    assert result.patch_report["total_patches"] == 0
+    # Ensure rebuilder was not called at all in PDF mode
+    orchestrator.rebuilder.assert_not_called()
+

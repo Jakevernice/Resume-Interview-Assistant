@@ -36,6 +36,7 @@ class ProcessRequest(BaseModel):
     resume_latex: str
     job_url: Optional[str] = None
     job_description: Optional[str] = None
+    input_mode: Optional[str] = "latex"
 
 
 class SurgicalPatchModel(BaseModel):
@@ -225,35 +226,40 @@ def _ensure_patch_report_field(
 
 # --- BYOK Dependency ---
 
-def get_gemini_api_key(
-    x_gemini_api_key: Optional[str] = Header(default=None, description="BYOK: Google Gemini API Key")
-) -> str:
+def get_byok_credentials(
+    x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
+    x_model: Optional[str] = Header(default="gemini/gemini-2.0-flash", alias="X-Model"),
+    x_gemini_api_key: Optional[str] = Header(default=None, alias="X-Gemini-API-Key"),
+) -> Tuple[str, str]:
     """
-    Dependency to extract and validate the user's Gemini API key from the headers.
+    Dependency to extract and validate the user's API key and target model from headers.
+    Supports both X-API-Key (Universal) and X-Gemini-API-Key (Legacy).
     """
-    if not x_gemini_api_key:
-        raise HTTPException(status_code=401, detail="X-Gemini-API-Key header is missing.")
-    return x_gemini_api_key
+    key = x_api_key or x_gemini_api_key
+    if not key:
+        raise HTTPException(status_code=401, detail="API key is missing. Provide the X-API-Key or X-Gemini-API-Key header.")
+    model = x_model or "gemini/gemini-2.0-flash"
+    return key, model
 
 
-def init_dspy_lm(api_key: str) -> dspy.LM:
+def init_dspy_lm(api_key: str, model: str = "gemini/gemini-2.0-flash") -> dspy.LM:
     """
-    Instantiate the DSPy Language Model with the provided key.
-    We limit max_retries to 1 to prevent triggering rapid bursts of API calls
-    if the model fails to output the expected structured format.
+    Instantiate the DSPy Language Model with the provided key and LiteLLM model identifier.
     """
-    return dspy.LM("gemini/gemini-3-flash-preview", api_key=api_key, max_retries=1)
+    return dspy.LM(model=model.strip(), api_key=api_key.strip(), max_retries=1)
 
 # --- Endpoints ---
 
 @app.post("/api/process", response_model=ProcessResponseModel)
 async def process_resume(
     request: ProcessRequest,
-    api_key: str = Depends(get_gemini_api_key)
+    credentials: Tuple[str, str] = Depends(get_byok_credentials)
 ) -> ProcessResponseModel:
     """
     End-to-end processing: Scrape JD, Analyze Resume, and Generate Surgical Patches.
     """
+    api_key, model = credentials
+
     # 1. Scraping Service
     job_desc = request.job_description
     if not job_desc and request.job_url:
@@ -269,7 +275,7 @@ async def process_resume(
         raise HTTPException(status_code=400, detail="Either job_url or job_description must be provided.")
 
     # 2. Agentic Processing with BYOK context
-    lm = init_dspy_lm(api_key)
+    lm = init_dspy_lm(api_key=api_key, model=model)
     orchestrator = ResumeOrchestrator()
     endpoint = "/api/process"
 
@@ -277,7 +283,8 @@ async def process_resume(
         with dspy.context(lm=lm):
             result = orchestrator(
                 resume_latex=request.resume_latex,
-                job_description=job_desc
+                job_description=job_desc,
+                input_mode=request.input_mode or "latex"
             )
 
             critique = _ensure_string_field(endpoint, "critique", getattr(result, "critique", ""))
@@ -391,12 +398,13 @@ async def extract_pdf_text(file: UploadFile = File(...)) -> ExtractPdfResponse:
 @app.post("/api/analyze-section", response_model=SectionAnalysisResponse)
 async def analyze_section(
     request: SectionRequest,
-    api_key: str = Depends(get_gemini_api_key)
+    credentials: Tuple[str, str] = Depends(get_byok_credentials)
 ) -> SectionAnalysisResponse:
     """
     Fine-grained analysis for specific resume sections.
     """
-    lm = init_dspy_lm(api_key)
+    api_key, model = credentials
+    lm = init_dspy_lm(api_key=api_key, model=model)
     # Define a quick inline signature for section analysis
     class SectionAnalyzer(dspy.Signature):
         """Analyze a specific LaTeX section against a job description."""
@@ -416,19 +424,20 @@ async def analyze_section(
         logger.error("Error during section analysis in /api/analyze-section (details scrubbed for security)")
         raise HTTPException(
             status_code=500,
-            detail="An error occurred during section analysis. Please verify your Gemini API key and prompt."
+            detail="An error occurred during section analysis. Please verify your API key and prompt."
         )
 
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_with_assistant(
     request: ChatRequest,
-    api_key: str = Depends(get_gemini_api_key)
+    credentials: Tuple[str, str] = Depends(get_byok_credentials)
 ) -> ChatResponse:
     """
     Multi-turn chat endpoint for resume-related queries and targeted edits.
     """
-    lm = init_dspy_lm(api_key)
+    api_key, model = credentials
+    lm = init_dspy_lm(api_key=api_key, model=model)
     predictor = dspy.ChainOfThought(ChatAssistant)
 
     # Format chat history for DSPy context

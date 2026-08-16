@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DiffEditor } from '@monaco-editor/react';
 import { useStore } from '../store/useStore';
+import { useTheme } from '../store/ThemeProvider';
 import { applyPatch } from '../services/api';
 import { X, Check, AlertCircle } from 'lucide-react';
 
@@ -15,6 +16,7 @@ const normalizeForMatch = (text: string): string => {
 
 const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { resume_latex, surgical_patches, patch_report, applyEdit } = useStore();
+  const { theme } = useTheme();
   const [currentPatchIndex, setCurrentPatchIndex] = useState(0);
 
   const patches = Array.isArray(surgical_patches) ? surgical_patches : [];
@@ -136,70 +138,147 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
   const isApplied = currentPatch?.status === 'applied';
   const isMatchFound = currentPatch ? (isApplied || normalizeForMatch(resume_latex).includes(normalizeForMatch(currentPatch.search_text))) : false;
   const hasPatches = patches.length > 0;
-
+  const monacoTheme = theme === 'dark' ? 'vs-dark' : 'vs';
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-8">
-      <div className="bg-white w-full h-full max-w-6xl rounded-lg shadow-2xl flex flex-col overflow-hidden border border-slate-200">
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'var(--color-bg-overlay)',
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: 'var(--color-bg-base)',
+          width: '100%',
+          height: '100%',
+          maxWidth: '1100px',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: 'var(--shadow-lg)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          border: '2px solid var(--color-border-strong)',
+        }}
+      >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-4">
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Patch Review</h2>
-            <div className="flex gap-1">
+        <div
+          style={{
+            padding: '12px 20px',
+            borderBottom: '1px solid var(--color-border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: 'var(--color-bg-subtle)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <h2
+              style={{
+                fontSize: '13px',
+                fontWeight: 700,
+                color: 'var(--color-text-primary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                margin: 0,
+              }}
+            >
+              Patch Review
+            </h2>
+            <div style={{ display: 'flex', gap: '4px' }}>
               {patches.map((patch, i) => (
                 <div
                   key={patch.id || `patch-indicator-${i}`}
-                  className={`h-1 w-6 rounded-full ${
-
-                    i === currentPatchIndex ? 'bg-blue-600' :
-                    patch.status === 'applied' ? 'bg-emerald-500' :
-                    patch.status === 'failed' ? 'bg-rose-500' :
-                    'bg-slate-200'
-                  }`}
+                  style={{
+                    height: '6px',
+                    width: '24px',
+                    borderRadius: '2px',
+                    backgroundColor:
+                      i === currentPatchIndex
+                        ? 'var(--color-accent)'
+                        : patch.status === 'applied'
+                        ? 'var(--color-success)'
+                        : patch.status === 'failed'
+                        ? 'var(--color-danger)'
+                        : 'var(--color-border-strong)',
+                    transition: 'all 150ms ease',
+                  }}
                 />
               ))}
             </div>
-            <span className="text-[10px] font-bold text-slate-400">
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-muted)' }}>
               {hasPatches ? `${currentPatchIndex + 1} OF ${patches.length}` : 'NO PATCHES'}
             </span>
-            <span className="text-[10px] font-bold text-emerald-600">APPLIED {patches.filter(p => p.status === 'applied').length}</span>
-            <span className="text-[10px] font-bold text-slate-400 ml-2">PENDING {patches.filter(p => p.status === 'pending').length}</span>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-success)' }}>
+              APPLIED {patches.filter(p => p.status === 'applied').length}
+            </span>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+              PENDING {patches.filter(p => p.status === 'pending').length}
+            </span>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-md transition-colors">
-            <X className="w-5 h-5 text-slate-500" />
+          <button
+            onClick={onClose}
+            title="Close the patch review window."
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--color-text-secondary)',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <X size={18} />
           </button>
         </div>
 
         {/* Info Bar */}
         {hasPatches && !isMatchFound && !isApplied && (
-          <div className="px-6 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600" />
-            <p className="text-xs text-amber-700 font-medium">
+          <div
+            style={{
+              padding: '8px 20px',
+              backgroundColor: 'var(--color-warning-subtle)',
+              borderBottom: '1px solid var(--color-border)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <AlertCircle size={16} color="var(--color-warning)" />
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-warning)', fontWeight: 600 }}>
               Conflict: The original text for this patch was not found. It may have been edited manually.
             </p>
           </div>
         )}
 
         {isApplied && (
-          <div className="px-6 py-2 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
-            <Check className="w-4 h-4 text-emerald-600" />
-            <p className="text-xs text-emerald-700 font-medium">
+          <div
+            style={{
+              padding: '8px 20px',
+              backgroundColor: 'var(--color-success-subtle)',
+              borderBottom: '1px solid var(--color-border)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <Check size={16} color="var(--color-success)" />
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-success)', fontWeight: 600 }}>
               This patch has already been applied.
             </p>
           </div>
         )}
 
-        {!hasPatches && (
-          <div className="px-6 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600" />
-            <p className="text-xs text-amber-700 font-medium">
-              No valid patch objects were returned. Review the patch report for details.
-            </p>
-          </div>
-        )}
-
         {/* Diff View */}
-        <div className="flex-1 min-h-0 bg-white">
+        <div style={{ flex: 1, minHeight: 0, backgroundColor: 'var(--color-bg-base)' }}>
           <DiffEditor
             original={
               hasPatches
@@ -208,7 +287,7 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
             }
             modified={hasPatches ? currentPatch.replace_with : 'No patches available.'}
             language="latex"
-            theme="vs-light"
+            theme={monacoTheme}
             options={{
               renderSideBySide: true,
               readOnly: true,
@@ -217,60 +296,140 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
               lineNumbers: 'off',
               scrollBeyondLastLine: false,
               automaticLayout: true,
-              padding: { top: 20, bottom: 20 }
+              padding: { top: 16, bottom: 16 }
             }}
           />
         </div>
 
-        <div className="px-6 py-3 border-t border-slate-200 bg-white max-h-40 overflow-y-auto space-y-2">
-          {patch_report.items.map((item, index) => (
-            <div key={`${item.patch_index}-${index}`} className="text-xs flex items-start justify-between gap-3">
-              <div className="text-slate-600">
-                <span className="font-semibold">#{item.patch_index}</span> {item.reason_code}
-                {item.message ? `: ${item.message}` : ''}
-              </div>
-              <span
-                className={`font-bold ${item.reason_code === 'applied' ? 'text-emerald-600' : 'text-rose-600'}`}
+        {/* Report items list */}
+        {patch_report.items.length > 0 && (
+          <div
+            style={{
+              padding: '10px 20px',
+              borderTop: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-bg-base)',
+              maxHeight: '120px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+            }}
+          >
+            {patch_report.items.map((item, index) => (
+              <div
+                key={`${item.patch_index}-${index}`}
+                style={{
+                  fontSize: '11px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                }}
               >
-                {item.status}
-              </span>
-            </div>
-          ))}
-        </div>
+                <div style={{ color: 'var(--color-text-secondary)' }}>
+                  <span style={{ fontWeight: 700 }}>#{item.patch_index}</span> {item.reason_code}
+                  {item.message ? `: ${item.message}` : ''}
+                </div>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: item.reason_code === 'applied' ? 'var(--color-success)' : 'var(--color-danger)',
+                  }}
+                >
+                  {item.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-          <div className="flex gap-4">
+        <div
+          style={{
+            padding: '14px 20px',
+            borderTop: '1px solid var(--color-border)',
+            backgroundColor: 'var(--color-bg-subtle)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div style={{ display: 'flex', gap: '12px' }}>
             <button
               onClick={() => setCurrentPatchIndex(prev => Math.max(0, prev - 1))}
               disabled={!hasPatches || currentPatchIndex === 0}
-              className="text-xs font-bold text-slate-500 hover:text-slate-900 disabled:opacity-30"
+              title="Show the previous suggested change."
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'var(--color-text-secondary)',
+                background: 'none',
+                border: 'none',
+                cursor: !hasPatches || currentPatchIndex === 0 ? 'not-allowed' : 'pointer',
+                opacity: !hasPatches || currentPatchIndex === 0 ? 0.3 : 1,
+              }}
             >
               PREVIOUS
             </button>
             <button
               onClick={() => setCurrentPatchIndex(prev => Math.min(patches.length - 1, prev + 1))}
               disabled={!hasPatches || currentPatchIndex === patches.length - 1}
-              className="text-xs font-bold text-slate-500 hover:text-slate-900 disabled:opacity-30"
+              title="Show the next suggested change."
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'var(--color-text-secondary)',
+                background: 'none',
+                border: 'none',
+                cursor: !hasPatches || currentPatchIndex === patches.length - 1 ? 'not-allowed' : 'pointer',
+                opacity: !hasPatches || currentPatchIndex === patches.length - 1 ? 0.3 : 1,
+              }}
             >
               NEXT
             </button>
           </div>
 
-          <div className="flex gap-3">
+          <div style={{ display: 'flex', gap: '10px' }}>
             <button
               onClick={handleApplyAll}
               disabled={!hasPatches || patches.every(p => p.status === 'applied')}
-              className="px-4 py-2 border border-slate-200 text-slate-600 rounded-md text-xs font-bold hover:bg-white transition-colors"
+              title="Apply all pending changes to your LaTeX resume."
+              style={{
+                padding: '8px 16px',
+                border: '1px solid var(--color-border-strong)',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--color-bg-base)',
+                color: 'var(--color-text-secondary)',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: !hasPatches || patches.every(p => p.status === 'applied') ? 'not-allowed' : 'pointer',
+                opacity: !hasPatches || patches.every(p => p.status === 'applied') ? 0.4 : 1,
+                boxShadow: 'var(--shadow-sm)',
+              }}
             >
               APPLY ALL
             </button>
             <button
               onClick={handleApplyCurrent}
               disabled={!hasPatches || !isMatchFound || isApplied}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md text-xs font-bold flex items-center gap-2 hover:bg-blue-700 disabled:bg-slate-300 transition-colors"
+              title="Apply this change to your LaTeX resume."
+              style={{
+                padding: '8px 20px',
+                backgroundColor: isApplied ? 'var(--color-success)' : 'var(--color-accent)',
+                color: 'var(--color-text-inverse)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '11px',
+                fontWeight: 700,
+                border: 'none',
+                cursor: !hasPatches || !isMatchFound || isApplied ? 'not-allowed' : 'pointer',
+                opacity: !hasPatches || !isMatchFound || isApplied ? 0.5 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: 'var(--shadow-sm)',
+              }}
             >
-              <Check className="w-4 h-4" />
+              <Check size={14} />
               {isApplied ? 'ALREADY APPLIED' : 'APPLY & CONTINUE'}
             </button>
           </div>

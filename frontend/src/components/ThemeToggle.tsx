@@ -32,13 +32,13 @@ const THEME_OPTIONS: ThemeOption[] = [
     value: 'light',
     label: 'XP Light',
     Icon: Sun,
-    title: 'XP Light (classic Luna Luna)',
+    title: 'Select the light theme (classic Windows XP Luna).',
   },
   {
     value: 'dark',
     label: 'XP Dark',
     Icon: Moon,
-    title: 'XP Dark (Zune / Royale Noir)',
+    title: 'Select the dark theme (Windows XP Royale Noir / Zune).',
   },
 ];
 

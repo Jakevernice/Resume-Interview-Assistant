@@ -6,7 +6,7 @@ import { Send, Loader2, User, Bot, Sparkles } from 'lucide-react';
 
 const ChatPane: React.FC = () => {
   const { chatHistory, appendChatMessage, resume_latex, appendSurgicalPatches, inputMode, extractedPdfText } = useStore();
-  const { apiKey } = useAuth();
+  const { apiKey, model } = useAuth();
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -28,7 +28,7 @@ const ChatPane: React.FC = () => {
     const resumeContent = inputMode === 'pdf' ? extractedPdfText : resume_latex;
 
     try {
-      const response = await sendChatMessage(chatHistory.concat(userMsg), input, resumeContent, inputMode, apiKey!);
+      const response = await sendChatMessage(chatHistory.concat(userMsg), input, resumeContent, inputMode, apiKey!, model);
       const assistantMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -36,6 +36,11 @@ const ChatPane: React.FC = () => {
         patches: response.suggested_patches
       };
       appendChatMessage(assistantMsg);
+
+      // Auto-stage suggested patches in LaTeX mode
+      if (inputMode === 'latex' && response.suggested_patches && response.suggested_patches.length > 0) {
+        appendSurgicalPatches(response.suggested_patches);
+      }
     } catch (error) {
       console.error('Chat failed', error);
       appendChatMessage({
@@ -46,15 +51,6 @@ const ChatPane: React.FC = () => {
     } finally {
       setIsSending(false);
     }
-  };
-
-  const handleQueuePatches = (patches: Array<{ search_text: string; replace_with: string }>) => {
-    appendSurgicalPatches(patches);
-    appendChatMessage({
-      id: Date.now().toString(),
-      role: 'system',
-      content: `Suggested ${patches.length} edit(s) added to the review queue. Click "Review Surgical Patches" in the sidebar to apply them.`
-    });
   };
 
 
@@ -89,27 +85,24 @@ const ChatPane: React.FC = () => {
                 {msg.content}
               </div>
               {inputMode === 'latex' && msg.patches && msg.patches.length > 0 && (
-                <button
-                  onClick={() => handleQueuePatches(msg.patches!)}
+                <div
                   style={{
                     alignSelf: 'flex-start',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    padding: '6px 10px',
+                    padding: '4px 8px',
                     fontSize: '11px',
                     fontWeight: 600,
-                    backgroundColor: 'var(--color-accent-subtle)',
-                    color: 'var(--color-accent)',
-                    border: '1px solid var(--color-accent)',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
+                    backgroundColor: 'var(--color-success-subtle)',
+                    color: 'var(--color-success)',
+                    border: '1px solid var(--color-success)',
+                    borderRadius: 'var(--radius-sm)'
                   }}
                 >
                   <Sparkles size={12} />
-                  Queue Edits for Review ({msg.patches.length})
-                </button>
+                  {msg.patches.length} edit(s) staged for review
+                </div>
               )}
             </div>
             {msg.role === 'user' && (
@@ -129,6 +122,7 @@ const ChatPane: React.FC = () => {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Ask a question or request an edit..."
+          title="Type a question or ask for a specific change to your resume."
           style={{
             flex: 1,
             padding: '10px 14px',
@@ -143,6 +137,7 @@ const ChatPane: React.FC = () => {
         <button
           onClick={handleSend}
           disabled={!input.trim() || isSending}
+          title="Send your question or edit request to the assistant."
           style={{
             padding: '10px',
             backgroundColor: !input.trim() || isSending ? 'var(--color-bg-subtle)' : 'var(--color-accent)',

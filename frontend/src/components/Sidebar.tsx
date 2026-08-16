@@ -43,7 +43,7 @@ const Sidebar: React.FC = () => {
     extractedPdfText,
     clearAll,
   } = useStore();
-  const { apiKey } = useAuth();
+  const { apiKey, model } = useAuth();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [jobUrl, setJobUrl] = useState('');
@@ -59,8 +59,7 @@ const Sidebar: React.FC = () => {
   ];
 
   // In PDF mode, analysis is run against the extracted plain text instead of
-  // the LaTeX source.  The backend's /api/process endpoint accepts plain text
-  // in the resume_latex field; the field name is a legacy artefact.
+  // the LaTeX source.
   const resumeContent = inputMode === 'pdf' ? extractedPdfText : resume_latex;
   const canAnalyze = !!resumeContent && (!!job_description || !!jobUrl);
 
@@ -70,7 +69,7 @@ const Sidebar: React.FC = () => {
     setIsProcessing(true);
     setAnalysisError(null);
     try {
-      const normalized = await processResume(resumeContent, jobUrl, job_description, apiKey!);
+      const normalized = await processResume(resumeContent, jobUrl, job_description, apiKey!, model, inputMode);
       setAnalysisResults(normalized);
     } catch (error) {
       console.error('Analysis failed', error);
@@ -207,6 +206,7 @@ const Sidebar: React.FC = () => {
             style={inputStyle}
             value={jobUrl}
             onChange={(e) => setJobUrl(e.target.value)}
+            title="Type the job link to get the job description automatically."
           />
           <textarea
             id="job-description-input"
@@ -215,6 +215,7 @@ const Sidebar: React.FC = () => {
             style={{ ...inputStyle, resize: 'none', lineHeight: 1.5 }}
             value={job_description}
             onChange={(e) => setJobDescription(e.target.value)}
+            title="Type or paste the job description text here."
           />
         </fieldset>
 
@@ -224,6 +225,7 @@ const Sidebar: React.FC = () => {
             id="analyze-button"
             onClick={handleAnalyze}
             disabled={isProcessing || !canAnalyze}
+            title="Analyze the resume against the job description and generate suggestions."
             style={{
               width: '100%',
               backgroundColor: isProcessing || !canAnalyze
@@ -374,34 +376,38 @@ const Sidebar: React.FC = () => {
 
             {/* Show patch review only in LaTeX mode where patches can be applied */}
             {inputMode === 'latex' &&
-              (surgical_patches.length > 0 || patch_report.items.length > 0) && (
-                <button
-                  id="review-patches-button"
-                  onClick={() => setShowPatchModal(true)}
-                  style={{
-                    width: '100%',
-                    border: '1px solid var(--color-accent)',
-                    backgroundColor: 'var(--color-accent-subtle)',
-                    color: 'var(--color-accent)',
-                    padding: '10px',
-                    borderRadius: 'var(--radius-sm)',
-                    fontWeight: 700,
-                    fontSize: '11px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    cursor: 'pointer',
-                    transition: 'background-color 150ms ease',
-                    boxShadow: 'var(--shadow-sm)',
-                  }}
-                >
-                  <ChevronRight size={14} />
-                  Review Surgical Patches
-                </button>
-              )}
+              (surgical_patches.length > 0 || patch_report.items.length > 0) && (() => {
+                const pendingCount = (Array.isArray(surgical_patches) ? surgical_patches : []).filter(p => p.status === 'pending').length;
+                return (
+                  <button
+                    id="review-patches-button"
+                    onClick={() => setShowPatchModal(true)}
+                    title="Open the review window to see and accept suggested changes."
+                    style={{
+                      width: '100%',
+                      border: '1px solid var(--color-accent)',
+                      backgroundColor: pendingCount > 0 ? 'var(--color-accent)' : 'var(--color-accent-subtle)',
+                      color: pendingCount > 0 ? 'var(--color-text-inverse)' : 'var(--color-accent)',
+                      padding: '10px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontWeight: 700,
+                      fontSize: '11px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      transition: 'background-color 150ms ease',
+                      boxShadow: 'var(--shadow-sm)',
+                    }}
+                  >
+                    <ChevronRight size={14} />
+                    Review Surgical Patches {pendingCount > 0 ? `(${pendingCount})` : ''}
+                  </button>
+                );
+              })()}
           </section>
         )}
       </div>
@@ -430,6 +436,7 @@ const Sidebar: React.FC = () => {
               setAnalysisError(null);
             }
           }}
+          title="Clear all session data. Keeps your API key and model."
           style={{
             width: '100%',
             display: 'flex',
