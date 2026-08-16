@@ -34,11 +34,28 @@ const Preview: React.FC = () => {
         if (prev) URL.revokeObjectURL(prev);
         return url;
       });
-    } catch (err: any) {
-      if (err.name === 'CanceledError') return;
+    } catch (err: unknown) {
+      const errorObj = err as { name?: string; code?: string; response?: { data?: unknown } };
+      if (errorObj?.name === 'CanceledError' || errorObj?.code === 'ERR_CANCELED') return;
 
-      if (err.response?.data?.type === 'compilation_error') {
+      let errorData: Record<string, unknown> | null = null;
+      const rawData = errorObj?.response?.data;
+
+      if (rawData instanceof Blob) {
+        try {
+          const text = await rawData.text();
+          errorData = JSON.parse(text);
+        } catch {
+          errorData = null;
+        }
+      } else if (typeof rawData === 'object' && rawData !== null) {
+        errorData = rawData as Record<string, unknown>;
+      }
+
+      if (errorData?.type === 'compilation_error') {
         setError('LaTeX Compilation Error. Check the editor for markers.');
+      } else if (typeof errorData?.detail === 'string') {
+        setError(errorData.detail);
       } else {
         setError('Failed to compile LaTeX. Ensure backend is active.');
       }
@@ -46,6 +63,7 @@ const Preview: React.FC = () => {
       setIsLoading(false);
     }
   }, [resume_latex, inputMode]);
+
 
   const handleDownloadPdf = () => {
     if (!pdfBlob) return;

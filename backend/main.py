@@ -24,8 +24,8 @@ logger = logging.getLogger("resume_rebuilder_api")
 # Enable CORS for the frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, this should be restricted
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -85,15 +85,40 @@ class ProcessResponseModel(BaseModel):
     patch_report: PatchReportModel
     job_description: str
 
+
 class CompileRequest(BaseModel):
     resume_latex: str
+
 
 class SectionRequest(BaseModel):
     section_latex: str
     job_description: str
 
 
-def _log_type_warning(endpoint: str, field: str, expected_type: str, value: Any):
+class ExtractPdfResponse(BaseModel):
+    extracted_text: str
+
+
+class SectionAnalysisResponse(BaseModel):
+    feedback: str
+
+
+class ChatResponse(BaseModel):
+    response_text: str
+    suggested_patches: List[SurgicalPatchModel]
+
+
+class ApplyPatchResponse(BaseModel):
+    updated_resume_latex: str
+    patch_report: PatchReportModel
+
+
+class HealthCheckResponse(BaseModel):
+    status: str
+    engine: str
+
+
+def _log_type_warning(endpoint: str, field: str, expected_type: str, value: Any) -> None:
     logger.warning(
         "serialization_warning endpoint=%s field=%s expected=%s actual=%s",
         endpoint,
@@ -200,7 +225,9 @@ def _ensure_patch_report_field(
 
 # --- BYOK Dependency ---
 
-def get_gemini_api_key(x_gemini_api_key: str = Header(..., description="BYOK: Google Gemini API Key")) -> str:
+def get_gemini_api_key(
+    x_gemini_api_key: Optional[str] = Header(default=None, description="BYOK: Google Gemini API Key")
+) -> str:
     """
     Dependency to extract and validate the user's Gemini API key from the headers.
     """
@@ -208,7 +235,8 @@ def get_gemini_api_key(x_gemini_api_key: str = Header(..., description="BYOK: Go
         raise HTTPException(status_code=401, detail="X-Gemini-API-Key header is missing.")
     return x_gemini_api_key
 
-def init_dspy_lm(api_key: str):
+
+def init_dspy_lm(api_key: str) -> dspy.LM:
     """
     Instantiate the DSPy Language Model with the provided key.
     We limit max_retries to 1 to prevent triggering rapid bursts of API calls
@@ -222,14 +250,20 @@ def init_dspy_lm(api_key: str):
 async def process_resume(
     request: ProcessRequest,
     api_key: str = Depends(get_gemini_api_key)
-):
+) -> ProcessResponseModel:
     """
     End-to-end processing: Scrape JD, Analyze Resume, and Generate Surgical Patches.
     """
     # 1. Scraping Service
     job_desc = request.job_description
     if not job_desc and request.job_url:
-        job_desc = await scrape_job_description(request.job_url)
+        try:
+            job_desc = await scrape_job_description(request.job_url)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        except Exception as exc:
+            logger.warning("Scraping failed: %s", exc)
+            raise HTTPException(status_code=400, detail="Failed to scrape job description from provided URL.")
 
     if not job_desc:
         raise HTTPException(status_code=400, detail="Either job_url or job_description must be provided.")
@@ -274,7 +308,7 @@ async def process_resume(
                 total_patches=len(surgical_patches),
             )
 
-            payload = ProcessResponseModel(
+            return ProcessResponseModel(
                 critique=critique,
                 required_skills=required_skills,
                 missing_keywords=missing_keywords,
@@ -283,13 +317,18 @@ async def process_resume(
                 patch_report=patch_report,
                 job_description=coerce_text(job_desc),
             )
-            return payload.model_dump(mode="json")
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error during agentic processing: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error during agentic processing in /api/process (details scrubbed for security)")
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred during resume processing. Please verify your Gemini API key and prompt."
+        )
+
 
 @app.post("/api/compile")
-async def compile_resume(request: CompileRequest):
+async def compile_resume(request: CompileRequest) -> Response:
     """
     Instantly compiles LaTeX to PDF using Tectonic with structured error handling.
     """
@@ -302,6 +341,8 @@ async def compile_resume(request: CompileRequest):
                 "Content-Disposition": "attachment; filename=resume.pdf"
             }
         )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         err_msg = str(e)
         if "LATEX_ERROR:" in err_msg:
@@ -313,14 +354,15 @@ async def compile_resume(request: CompileRequest):
                     status_code=400,
                     content={"type": "compilation_error", "errors": json.loads(error_data)}
                 )
-            except:
+            except Exception:
                 pass
 
-        raise HTTPException(status_code=500, detail=err_msg)
+        logger.warning("LaTeX compilation failed: %s", err_msg)
+        raise HTTPException(status_code=500, detail="Failed to compile LaTeX document.")
 
 
-@app.post("/api/extract-pdf")
-async def extract_pdf_text(file: UploadFile = File(...)):
+@app.post("/api/extract-pdf", response_model=ExtractPdfResponse)
+async def extract_pdf_text(file: UploadFile = File(...)) -> ExtractPdfResponse:
     """
     Accepts a PDF upload and returns the extracted plain text.
 
@@ -343,14 +385,14 @@ async def extract_pdf_text(file: UploadFile = File(...)):
         logger.exception("PDF text extraction failed: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to extract text from PDF.")
 
-    return {"extracted_text": text}
+    return ExtractPdfResponse(extracted_text=text)
 
 
-@app.post("/api/analyze-section")
+@app.post("/api/analyze-section", response_model=SectionAnalysisResponse)
 async def analyze_section(
     request: SectionRequest,
     api_key: str = Depends(get_gemini_api_key)
-):
+) -> SectionAnalysisResponse:
     """
     Fine-grained analysis for specific resume sections.
     """
@@ -367,15 +409,22 @@ async def analyze_section(
     try:
         with dspy.context(lm=lm):
             result = analyzer(section_latex=request.section_latex, job_description=request.job_description)
-            return {"feedback": result.feedback}
+            return SectionAnalysisResponse(feedback=getattr(result, "feedback", ""))
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error during section analysis in /api/analyze-section (details scrubbed for security)")
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred during section analysis. Please verify your Gemini API key and prompt."
+        )
 
-@app.post("/api/chat")
+
+@app.post("/api/chat", response_model=ChatResponse)
 async def chat_with_assistant(
     request: ChatRequest,
     api_key: str = Depends(get_gemini_api_key)
-):
+) -> ChatResponse:
     """
     Multi-turn chat endpoint for resume-related queries and targeted edits.
     """
@@ -399,20 +448,28 @@ async def chat_with_assistant(
                 getattr(result, "suggested_patches", "[]")
             )
 
-            return {
-                "response_text": getattr(result, "response_text", ""),
-                "suggested_patches": [
-                    {"search_text": p["search_text"], "replace_with": p["replace_with"]}
+            return ChatResponse(
+                response_text=getattr(result, "response_text", ""),
+                suggested_patches=[
+                    SurgicalPatchModel(
+                        search_text=p["search_text"],
+                        replace_with=p["replace_with"]
+                    )
                     for p in valid_patches
                 ]
-            }
+            )
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.exception("Chat interaction failed: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error during chat processing in /api/chat (details scrubbed for security)")
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred during chat interaction. Please verify your Gemini API key and prompt."
+        )
 
 
-@app.post("/api/apply-patch")
-async def apply_patch(request: ApplyPatchRequest):
+@app.post("/api/apply-patch", response_model=ApplyPatchResponse)
+async def apply_patch(request: ApplyPatchRequest) -> ApplyPatchResponse:
     """
     Applies a specific set of surgical patches to the provided LaTeX source.
     """
@@ -421,16 +478,25 @@ async def apply_patch(request: ApplyPatchRequest):
         for p in request.patches
     ]
     updated_latex, report = apply_deterministic_patches(request.resume_latex, patches_dict)
-    return {
-        "updated_resume_latex": updated_latex,
-        "patch_report": report
-    }
+    endpoint = "/api/apply-patch"
+    normalized_report = _ensure_patch_report_field(
+        endpoint,
+        "patch_report",
+        report,
+        total_patches=len(request.patches),
+    )
+    return ApplyPatchResponse(
+        updated_resume_latex=updated_latex,
+        patch_report=normalized_report
+    )
 
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "engine": "tectonic"}
+@app.get("/health", response_model=HealthCheckResponse)
+async def health_check() -> HealthCheckResponse:
+    return HealthCheckResponse(status="healthy", engine="tectonic")
+
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+

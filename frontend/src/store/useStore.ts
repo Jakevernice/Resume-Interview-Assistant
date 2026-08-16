@@ -81,18 +81,21 @@ const ensureStringArray = (value: unknown): string[] => {
 const ensurePatchArray = (value: unknown): SurgicalPatch[] => {
   if (!Array.isArray(value)) return [];
   return value
-    .filter((entry): entry is any => (
+    .filter((entry): entry is Record<string, unknown> => (
       typeof entry === 'object' &&
       entry !== null &&
       'search_text' in entry &&
       'replace_with' in entry
     ))
-    .map((entry, index) => ({
-      id: entry.id || `patch-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
-      search_text: ensureString(entry.search_text),
-      replace_with: ensureString(entry.replace_with),
-      status: (entry.status === 'applied' || entry.status === 'failed' || entry.status === 'pending') ? entry.status : 'pending',
-    }))
+    .map((entry, index) => {
+      const status = ensureString(entry.status);
+      return {
+        id: (typeof entry.id === 'string' && entry.id) || `patch-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+        search_text: ensureString(entry.search_text),
+        replace_with: ensureString(entry.replace_with),
+        status: (status === 'applied' || status === 'failed' || status === 'pending') ? status as 'pending' | 'applied' | 'failed' : 'pending',
+      };
+    })
     .filter((entry) => entry.search_text.trim().length > 0);
 };
 
@@ -120,7 +123,7 @@ const ensurePatchReport = (value: unknown, fallbackCount: number): PatchReport =
             reason_code: ensureString(item.reason_code),
             message: ensureString(item.message),
             search_text_preview: ensureString(item.search_text_preview),
-        }
+        };
     }),
   };
 };
@@ -169,7 +172,17 @@ export const useStore = create<AppState>()(
       setJobDescription: (jd) => set({ job_description: jd }),
       setInputMode: (mode) => set({ inputMode: mode }),
       setExtractedPdfText: (text) => set({ extractedPdfText: text }),
-      setUploadedPdfUrl: (url) => set({ uploadedPdfUrl: url }),
+      setUploadedPdfUrl: (url) =>
+        set((state) => {
+          if (state.uploadedPdfUrl && state.uploadedPdfUrl !== url) {
+            try {
+              URL.revokeObjectURL(state.uploadedPdfUrl);
+            } catch {
+              // ignore revocation errors
+            }
+          }
+          return { uploadedPdfUrl: url };
+        }),
       appendSurgicalPatches: (patches) =>
         set((state) => {
             const newPatches = ensurePatchArray(patches);
@@ -212,20 +225,29 @@ export const useStore = create<AppState>()(
       },
       clearAll: () => {
         del('raw-uploaded-pdf').catch(() => {});
-        set({
-          resume_latex: '',
-          job_description: '',
-          critique: '',
-          required_skills: [],
-          missing_keywords: [],
-          surgical_patches: [],
-          patch_report: emptyPatchReport(),
-          analysis_warnings: [],
-          chatHistory: [],
-          history: [],
-          inputMode: 'latex',
-          extractedPdfText: '',
-          uploadedPdfUrl: null,
+        set((state) => {
+          if (state.uploadedPdfUrl) {
+            try {
+              URL.revokeObjectURL(state.uploadedPdfUrl);
+            } catch {
+              // ignore revocation errors
+            }
+          }
+          return {
+            resume_latex: '',
+            job_description: '',
+            critique: '',
+            required_skills: [],
+            missing_keywords: [],
+            surgical_patches: [],
+            patch_report: emptyPatchReport(),
+            analysis_warnings: [],
+            chatHistory: [],
+            history: [],
+            inputMode: 'latex',
+            extractedPdfText: '',
+            uploadedPdfUrl: null,
+          };
         });
       },
     }),
@@ -238,19 +260,21 @@ export const useStore = create<AppState>()(
         const { uploadedPdfUrl, ...rest } = state;
         return rest;
       },
-      migrate: (persistedState: any, version) => {
-        if (!persistedState || version >= 2) {
-          return persistedState;
+      migrate: (persistedState: unknown, version: number) => {
+        if (!persistedState || typeof persistedState !== 'object' || version >= 2) {
+          return persistedState as AppState;
         }
 
-        const legacyPatches = persistedState?.surgical_patches;
+        const legacyState = persistedState as Record<string, unknown>;
+        const legacyPatches = legacyState.surgical_patches;
         return {
-          ...persistedState,
+          ...legacyState,
           surgical_patches: ensurePatchArray(legacyPatches),
           patch_report: emptyPatchReport(),
           analysis_warnings: [],
-        };
+        } as unknown as AppState;
       },
     }
   )
 );
+

@@ -42,7 +42,8 @@ describe('PatchReviewModal', () => {
 
     expect(screen.getByText(/Patch Review/i)).toBeInTheDocument();
     expect(screen.getByText(/not_found_after_normalization/i)).toBeInTheDocument();
-    expect(screen.getByText(/FAILED 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/^failed$/i)).toBeInTheDocument();
     expect(screen.getByTestId('diff-editor')).toBeInTheDocument();
   });
 });
+

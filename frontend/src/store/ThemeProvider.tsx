@@ -73,10 +73,15 @@ function applyThemeToDocument(theme: Theme, suppressTransition = false): void {
   }
   root.setAttribute('data-theme', theme);
   if (suppressTransition) {
-    // Re-enable transitions after a single frame so the initial paint settles.
-    root.removeAttribute('data-no-transition');
+    // Re-enable transitions after initial layout/paint settles.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        root.removeAttribute('data-no-transition');
+      });
+    });
   }
 }
+
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 

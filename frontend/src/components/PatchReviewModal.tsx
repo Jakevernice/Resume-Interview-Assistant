@@ -4,6 +4,15 @@ import { useStore } from '../store/useStore';
 import { applyPatch } from '../services/api';
 import { X, Check, AlertCircle } from 'lucide-react';
 
+const normalizeForMatch = (text: string): string => {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map(line => line.trimEnd())
+    .join('\n');
+};
+
 const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { resume_latex, surgical_patches, patch_report, applyEdit } = useStore();
   const [currentPatchIndex, setCurrentPatchIndex] = useState(0);
@@ -22,42 +31,42 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
 
     try {
       const { updated_resume_latex, patch_report: newReport } = await applyPatch(resume_latex, [patch]);
-      if (newReport.applied_patches > 0) {
-        // Update the status of this patch in the store
-        const updatedPatches = patches.map((p, i) =>
-            i === currentPatchIndex ? { ...p, status: 'applied' as const } : p
-        );
+      const outcome = newReport.items[0];
+      const isSuccess = outcome ? outcome.reason_code === 'applied' : newReport.applied_patches > 0;
 
-        // Update only the specific item in the global report
-        const updatedReportItems = patch_report.items.map(item => {
-            if (item.patch_index === currentPatchIndex) {
-                return {
-                    ...item,
-                    status: 'applied' as const,
-                    reason_code: 'applied',
-                    message: 'Patch applied successfully via modal.'
-                };
-            }
-            return item;
-        });
+      const updatedPatches = patches.map((p, i) =>
+        i === currentPatchIndex ? { ...p, status: isSuccess ? ('applied' as const) : ('failed' as const) } : p
+      );
 
-        applyEdit({
-          resume_latex: updated_resume_latex,
-          surgical_patches: updatedPatches,
-          patch_report: {
-              ...patch_report,
-              applied_patches: patch_report.applied_patches + 1,
-              items: updatedReportItems
-          }
-        });
-
-        // Automatically move to next pending patch if available
-        const nextPending = updatedPatches.findIndex((p, idx) => idx > currentPatchIndex && p.status === 'pending');
-        if (nextPending !== -1) {
-            setCurrentPatchIndex(nextPending);
-        } else if (updatedPatches.every(p => p.status !== 'pending')) {
-            onClose();
+      const updatedReportItems = patch_report.items.map(item => {
+        if (item.patch_index === currentPatchIndex) {
+          return {
+            ...item,
+            status: isSuccess ? ('applied' as const) : ('failed' as const),
+            reason_code: outcome ? outcome.reason_code : (isSuccess ? 'applied' : 'failed'),
+            message: outcome ? outcome.message : (isSuccess ? 'Patch applied successfully via modal.' : 'Failed to apply patch.')
+          };
         }
+        return item;
+      });
+
+      applyEdit({
+        resume_latex: isSuccess ? updated_resume_latex : resume_latex,
+        surgical_patches: updatedPatches,
+        patch_report: {
+          ...patch_report,
+          applied_patches: updatedPatches.filter(p => p.status === 'applied').length,
+          failed_patches: updatedPatches.filter(p => p.status === 'failed').length,
+          items: updatedReportItems
+        }
+      });
+
+      // Automatically move to next pending patch if available
+      const nextPending = updatedPatches.findIndex((p, idx) => idx > currentPatchIndex && p.status === 'pending');
+      if (nextPending !== -1) {
+        setCurrentPatchIndex(nextPending);
+      } else if (updatedPatches.every(p => p.status !== 'pending')) {
+        onClose();
       }
     } catch (err) {
       console.error("Failed to apply patch in PatchReviewModal", err);
@@ -70,33 +79,51 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
 
     try {
       const { updated_resume_latex, patch_report: newReport } = await applyPatch(resume_latex, pendingPatches);
-      if (newReport.applied_patches > 0) {
-        const appliedIndices = patches.map((p, i) => p.status === 'pending' ? i : -1).filter(i => i !== -1);
 
-        const updatedPatches = patches.map(p => p.status === 'pending' ? { ...p, status: 'applied' as const } : p);
-        // Update all items in report to applied
-        const updatedReportItems = patch_report.items.map(item => {
-            if (appliedIndices.includes(item.patch_index)) {
-                return {
-                    ...item,
-                    status: 'applied' as const,
-                    reason_code: 'applied',
-                    message: 'Patch applied successfully in bulk via modal.'
-                };
-            }
-            return item;
-        });
+      let pendingIndex = 0;
+      const updatedPatches = patches.map(p => {
+        if (p.status !== 'pending') return p;
+        const outcome = newReport.items[pendingIndex];
+        pendingIndex++;
+        if (outcome && outcome.reason_code === 'applied') {
+          return { ...p, status: 'applied' as const };
+        } else if (outcome) {
+          return { ...p, status: 'failed' as const };
+        }
+        return p;
+      });
 
-        applyEdit({
-          resume_latex: updated_resume_latex,
-          surgical_patches: updatedPatches,
-          patch_report: {
-              ...patch_report,
-              applied_patches: patch_report.applied_patches + pendingPatches.length,
-              items: updatedReportItems
-          }
-        });
-      }
+      const appliedIndices = patches
+        .map((p, i) => (p.status === 'pending' ? i : -1))
+        .filter(i => i !== -1);
+
+      const updatedReportItems = patch_report.items.map(item => {
+        const itemPendingIdx = appliedIndices.indexOf(item.patch_index);
+        if (itemPendingIdx !== -1 && newReport.items[itemPendingIdx]) {
+          const outcome = newReport.items[itemPendingIdx];
+          return {
+            ...item,
+            status: outcome.status,
+            reason_code: outcome.reason_code,
+            message: outcome.message || 'Processed in bulk via modal.',
+          };
+        }
+        return item;
+      });
+
+      const appliedCount = updatedPatches.filter(p => p.status === 'applied').length;
+      const failedCount = updatedPatches.filter(p => p.status === 'failed').length;
+
+      applyEdit({
+        resume_latex: updated_resume_latex,
+        surgical_patches: updatedPatches,
+        patch_report: {
+          ...patch_report,
+          applied_patches: appliedCount,
+          failed_patches: failedCount,
+          items: updatedReportItems
+        }
+      });
       onClose();
     } catch (err) {
       console.error("Failed to apply all patches in PatchReviewModal", err);
@@ -107,8 +134,9 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
 
   const currentPatch = patches[currentPatchIndex];
   const isApplied = currentPatch?.status === 'applied';
-  const isMatchFound = currentPatch ? (isApplied || resume_latex.includes(currentPatch.search_text)) : false;
+  const isMatchFound = currentPatch ? (isApplied || normalizeForMatch(resume_latex).includes(normalizeForMatch(currentPatch.search_text))) : false;
   const hasPatches = patches.length > 0;
+
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-8">
@@ -120,8 +148,9 @@ const PatchReviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
             <div className="flex gap-1">
               {patches.map((patch, i) => (
                 <div
-                  key={patch.id}
+                  key={patch.id || `patch-indicator-${i}`}
                   className={`h-1 w-6 rounded-full ${
+
                     i === currentPatchIndex ? 'bg-blue-600' :
                     patch.status === 'applied' ? 'bg-emerald-500' :
                     patch.status === 'failed' ? 'bg-rose-500' :

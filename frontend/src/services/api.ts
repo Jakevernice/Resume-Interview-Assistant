@@ -1,8 +1,13 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000', // Update this if your backend runs elsewhere
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
 });
+
+export interface RawSurgicalPatch {
+  search_text: string;
+  replace_with: string;
+}
 
 export interface SurgicalPatch {
   id: string;
@@ -37,6 +42,7 @@ export interface ProcessResumeResult {
   job_description: string;
   analysis_warnings: string[];
 }
+
 
 const toString = (value: unknown): string => {
   if (typeof value === 'string') return value;
@@ -142,14 +148,16 @@ const normalizePatchReport = (value: unknown, fallbackPatchCount: number): Patch
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
-  patches?: SurgicalPatch[];
+  patches?: RawSurgicalPatch[] | SurgicalPatch[];
   id?: string;
 }
 
+
 export interface ChatResponse {
   response_text: string;
-  suggested_patches: SurgicalPatch[];
+  suggested_patches: RawSurgicalPatch[];
 }
+
 
 export const normalizeProcessResumeResponse = (payload: unknown): ProcessResumeResult => {
   const source = (typeof payload === 'object' && payload !== null ? payload : {}) as Record<string, unknown>;

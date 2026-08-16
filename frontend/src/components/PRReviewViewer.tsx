@@ -123,7 +123,14 @@ const PDFReviewPane: React.FC = () => {
   );
 };
 
-// ─── LaTeX Diff Pane ──────────────────────────────────────────────────────────
+const normalizeForMatch = (text: string): string => {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map(line => line.trimEnd())
+    .join('\n');
+};
 
 /**
  * Renders surgical patches as navigable code-review diffs with individual
@@ -147,12 +154,13 @@ export const LaTeXDiffPane: React.FC<{
   const currentPatch = patches[currentPatchIndex];
   const isApplied = currentPatch?.status === 'applied';
   const isMatchFound = currentPatch
-    ? (isApplied || resume_latex.includes(currentPatch.search_text))
+    ? (isApplied || normalizeForMatch(resume_latex).includes(normalizeForMatch(currentPatch.search_text)))
     : false;
   const hasPatches = patches.length > 0;
 
   // Determine Monaco theme based on app theme
   const monacoTheme = theme === 'dark' ? 'xp-dark' : 'xp-light';
+
 
   const handleBeforeMount = (monaco: any) => {
     // Define classic high-fidelity Windows XP themes
@@ -211,8 +219,9 @@ export const LaTeXDiffPane: React.FC<{
           <div style={{ display: 'flex', gap: '4px' }}>
             {patches.map((patch, i) => (
               <button
-                key={patch.id}
+                key={patch.id || `patch-dot-${i}`}
                 onClick={() => onNavigate(i)}
+
                 title={`Patch ${i + 1} (${patch.status})`}
                 style={{
                   width: '20px',
@@ -420,40 +429,43 @@ const PRReviewViewer: React.FC = () => {
 
     try {
       const { updated_resume_latex, patch_report: newReport } = await applyPatch(resume_latex, [patch]);
-      if (newReport.applied_patches > 0) {
-        // Update the status of this patch in the store
-        const updatedPatches = patches.map((p, i) =>
-            i === currentPatchIndex ? { ...p, status: 'applied' as const } : p
-        );
+      const outcome = newReport.items[0];
+      const isSuccess = outcome ? outcome.reason_code === 'applied' : newReport.applied_patches > 0;
 
-        // Update only the specific item in the global report
-        const updatedReportItems = patch_report.items.map(item => {
-            if (item.patch_index === currentPatchIndex) {
-                return {
-                    ...item,
-                    status: 'applied' as const,
-                    reason_code: 'applied',
-                    message: 'Patch applied successfully via review.'
-                };
-            }
-            return item;
-        });
+      const updatedPatches = patches.map((p, i) =>
+        i === currentPatchIndex ? { ...p, status: isSuccess ? ('applied' as const) : ('failed' as const) } : p
+      );
 
-        applyEdit({
-          resume_latex: updated_resume_latex,
-          surgical_patches: updatedPatches,
-          patch_report: {
-              ...patch_report,
-              applied_patches: patch_report.applied_patches + 1,
-              items: updatedReportItems
-          }
-        });
-
-        // Automatically move to next pending patch if available
-        const nextPending = updatedPatches.findIndex((p, idx) => idx > currentPatchIndex && p.status === 'pending');
-        if (nextPending !== -1) {
-            setCurrentPatchIndex(nextPending);
+      const updatedReportItems = patch_report.items.map(item => {
+        if (item.patch_index === currentPatchIndex) {
+          return {
+            ...item,
+            status: isSuccess ? ('applied' as const) : ('failed' as const),
+            reason_code: outcome ? outcome.reason_code : (isSuccess ? 'applied' : 'failed'),
+            message: outcome ? outcome.message : (isSuccess ? 'Patch applied successfully via review.' : 'Failed to apply patch.')
+          };
         }
+        return item;
+      });
+
+      const appliedCount = updatedPatches.filter(p => p.status === 'applied').length;
+      const failedCount = updatedPatches.filter(p => p.status === 'failed').length;
+
+      applyEdit({
+        resume_latex: isSuccess ? updated_resume_latex : resume_latex,
+        surgical_patches: updatedPatches,
+        patch_report: {
+          ...patch_report,
+          applied_patches: appliedCount,
+          failed_patches: failedCount,
+          items: updatedReportItems
+        }
+      });
+
+      // Automatically move to next pending patch if available
+      const nextPending = updatedPatches.findIndex((p, idx) => idx > currentPatchIndex && p.status === 'pending');
+      if (nextPending !== -1) {
+        setCurrentPatchIndex(nextPending);
       }
     } catch (err) {
       console.error("Failed to apply current patch in PRReviewViewer", err);
@@ -466,37 +478,57 @@ const PRReviewViewer: React.FC = () => {
 
     try {
       const { updated_resume_latex, patch_report: newReport } = await applyPatch(resume_latex, pendingPatches);
-      if (newReport.applied_patches > 0) {
-        const appliedIndices = patches.map((p, i) => p.status === 'pending' ? i : -1).filter(i => i !== -1);
 
-        const updatedPatches = patches.map(p => p.status === 'pending' ? { ...p, status: 'applied' as const } : p);
+      // Create mapping by ordinal index in pendingPatches to backend outcome
+      let pendingIndex = 0;
+      const updatedPatches = patches.map(p => {
+        if (p.status !== 'pending') return p;
+        const outcome = newReport.items[pendingIndex];
+        pendingIndex++;
+        if (outcome && outcome.reason_code === 'applied') {
+          return { ...p, status: 'applied' as const };
+        } else if (outcome) {
+          return { ...p, status: 'failed' as const };
+        }
+        return p;
+      });
 
-        const updatedReportItems = patch_report.items.map(item => {
-            if (appliedIndices.includes(item.patch_index)) {
-                return {
-                    ...item,
-                    status: 'applied' as const,
-                    reason_code: 'applied',
-                    message: 'Patch applied successfully in bulk.'
-                };
-            }
-            return item;
-        });
+      const appliedIndices = patches
+        .map((p, i) => (p.status === 'pending' ? i : -1))
+        .filter(i => i !== -1);
 
-        applyEdit({
-          resume_latex: updated_resume_latex,
-          surgical_patches: updatedPatches,
-          patch_report: {
-              ...patch_report,
-              applied_patches: patch_report.applied_patches + pendingPatches.length,
-              items: updatedReportItems
-          }
-        });
-      }
+      const updatedReportItems = patch_report.items.map(item => {
+        const itemPendingIdx = appliedIndices.indexOf(item.patch_index);
+        if (itemPendingIdx !== -1 && newReport.items[itemPendingIdx]) {
+          const outcome = newReport.items[itemPendingIdx];
+          return {
+            ...item,
+            status: outcome.status,
+            reason_code: outcome.reason_code,
+            message: outcome.message || 'Processed in bulk.',
+          };
+        }
+        return item;
+      });
+
+      const appliedCount = updatedPatches.filter(p => p.status === 'applied').length;
+      const failedCount = updatedPatches.filter(p => p.status === 'failed').length;
+
+      applyEdit({
+        resume_latex: updated_resume_latex,
+        surgical_patches: updatedPatches,
+        patch_report: {
+          ...patch_report,
+          applied_patches: appliedCount,
+          failed_patches: failedCount,
+          items: updatedReportItems
+        }
+      });
     } catch (err) {
       console.error("Failed to apply all patches in PRReviewViewer", err);
     }
   }, [patches, resume_latex, patch_report, applyEdit]);
+
 
   if (inputMode === 'pdf') {
     return <PDFReviewPane />;

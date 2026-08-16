@@ -7,7 +7,8 @@ def test_chat_endpoint_requires_api_key():
     response = client.post("/api/chat", json={
         "chat_history": [],
         "message": "Hello",
-        "resume_latex": "..."
+        "resume_content": "\\documentclass{article}\\begin{document}Test\\end{document}",
+        "input_mode": "latex"
     })
     assert response.status_code == 401
     assert response.json()["detail"] == "X-Gemini-API-Key header is missing."
@@ -22,3 +23,9 @@ def test_apply_patch_endpoint_works():
     assert data["updated_resume_latex"] == "Hi World"
     assert data["patch_report"]["applied_patches"] == 1
     assert data["patch_report"]["failed_patches"] == 0
+
+def test_health_check():
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "healthy", "engine": "tectonic"}
+

@@ -48,7 +48,7 @@ const ChatPane: React.FC = () => {
     }
   };
 
-  const handleQueuePatches = (patches: any[]) => {
+  const handleQueuePatches = (patches: Array<{ search_text: string; replace_with: string }>) => {
     appendSurgicalPatches(patches);
     appendChatMessage({
       id: Date.now().toString(),
@@ -56,6 +56,7 @@ const ChatPane: React.FC = () => {
       content: `Suggested ${patches.length} edit(s) added to the review queue. Click "Review Surgical Patches" in the sidebar to apply them.`
     });
   };
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--color-bg-base)' }}>

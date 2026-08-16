@@ -3,13 +3,43 @@ import tempfile
 import subprocess
 import re
 from typing import Dict, Any, List
-
 import json
+
+DANGEROUS_LATEX_PATTERNS = [
+    r"\\input\s*\{[^}]*[\/\\]",
+    r"\\input\s*\{(?:\.\.|\/)",
+    r"\\input\s+[^\s{}]+",
+    r"\\include\s*\{[^}]*[\/\\]",
+    r"\\include\s*\{(?:\.\.|\/)",
+    r"\\include\s+[^\s{}]+",
+    r"\\openin",
+    r"\\read\s*\d+",
+    r"\\write18",
+    r"\\immediate\s*\\write18",
+    r"\\catcode",
+]
+
+
+def sanitize_latex_source(source: str) -> None:
+    """
+    Sanitizes LaTeX source to block local file read/inclusion primitives,
+    directory traversals, and shell escape directives.
+    """
+    if not source or not isinstance(source, str):
+        raise ValueError("LaTeX source must be a non-empty string.")
+
+    for pattern in DANGEROUS_LATEX_PATTERNS:
+        if re.search(pattern, source, re.IGNORECASE):
+            raise ValueError("Disallowed LaTeX file inclusion primitive or directive detected.")
+
 
 def compile_latex_to_pdf(latex_source: str) -> bytes:
     """
     Compiles LaTeX source code to a PDF byte stream using Tectonic.
+    Sanitizes source before compilation to prevent local file inclusion.
     """
+    sanitize_latex_source(latex_source)
+
     with tempfile.TemporaryDirectory() as temp_dir:
         input_file = os.path.join(temp_dir, "resume.tex")
         with open(input_file, "w", encoding="utf-8") as f:
@@ -41,6 +71,7 @@ def compile_latex_to_pdf(latex_source: str) -> bytes:
                 # Return the structured errors as part of the exception message
                 # main.py will parse this
                 raise Exception(f"LATEX_ERROR:{json.dumps(errors)}")
+
 
 def parse_tectonic_errors(output: str) -> List[Dict[str, Any]]:
     """

@@ -12,3 +12,5 @@ litellm<1.82.0
 google-generativeai
 # PDF text extraction (dual-mode input support)
 pypdf
+pytest
+pytest-asyncio
