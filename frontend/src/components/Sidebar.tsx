@@ -14,7 +14,6 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { useAuth } from '../store/AuthContext';
 import { processResume } from '../services/api';
 import {
   Sparkles,
@@ -42,8 +41,9 @@ const Sidebar: React.FC = () => {
     inputMode,
     extractedPdfText,
     clearAll,
+    apiKey,
+    model,
   } = useStore();
-  const { apiKey, model } = useAuth();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [jobUrl, setJobUrl] = useState('');

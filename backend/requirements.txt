@@ -4,9 +4,5 @@ pydantic
 dspy-ai
 playwright
 pypdf
-python-dotenv
-httpx
-jinja2
 python-multipart
 pytest
-

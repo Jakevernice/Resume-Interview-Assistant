@@ -118,15 +118,6 @@ def test_process_endpoint_requires_api_key():
     assert "API key is missing" in response.json()["detail"]
 
 
-def test_analyze_section_requires_api_key():
-    response = client.post("/api/analyze-section", json={
-        "section_latex": "\\section{Skills}",
-        "job_description": "Python Developer"
-    })
-    assert response.status_code == 401
-    assert "API key is missing" in response.json()["detail"]
-
-
 def test_compile_endpoint_rejects_malicious_latex():
     response = client.post("/api/compile", json={
         "resume_latex": "\\documentclass{article}\\begin{document}\\input{/etc/passwd}\\end{document}"
@@ -199,4 +190,3 @@ def test_extract_pdf_rejects_empty_file():
     )
     assert response.status_code == 400
     assert "Uploaded file is empty" in response.json()["detail"]
-

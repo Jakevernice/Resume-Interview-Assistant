@@ -14,13 +14,7 @@ def coerce_text(value: Any) -> str:
 
 
 def _unique_preserve_order(items: List[str]) -> List[str]:
-    seen = set()
-    ordered: List[str] = []
-    for item in items:
-        if item not in seen:
-            seen.add(item)
-            ordered.append(item)
-    return ordered
+    return list(dict.fromkeys(items))
 
 
 def coerce_string_array(value: Any) -> List[str]:

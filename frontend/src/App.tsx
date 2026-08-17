@@ -13,7 +13,6 @@
  */
 
 import React, { useState } from 'react';
-import { AuthProvider, useAuth } from './store/AuthContext';
 import { ThemeProvider } from './store/ThemeProvider';
 import { useStore } from './store/useStore';
 import { checkHealth } from './services/api';
@@ -87,7 +86,7 @@ class AppErrorBoundary extends React.Component<
 // ─── API Key guard ────────────────────────────────────────────────────────────
 
 const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { apiKey, model, setCredentials } = useAuth();
+  const { apiKey, model, setCredentials } = useStore();
   const [inputKey, setInputKey] = useState('');
   const [inputModel, setInputModel] = useState(model || 'gemini/gemini-2.0-flash');
   const [isValidating, setIsValidating] = useState(false);
@@ -330,8 +329,7 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 // ─── Workspace ────────────────────────────────────────────────────────────────
 
 const Workspace: React.FC = () => {
-  const { inputMode, setUploadedPdfUrl, history, undoEdit } = useStore();
-  const { setApiKey, model } = useAuth();
+  const { inputMode, setUploadedPdfUrl, history, undoEdit, setApiKey, model } = useStore();
 
   // Rehydrate uploaded PDF visual preview on boot
   React.useEffect(() => {
@@ -558,11 +556,9 @@ const App: React.FC = () => {
   return (
     <AppErrorBoundary>
       <ThemeProvider>
-        <AuthProvider>
-          <APIKeyGuard>
-            <Workspace />
-          </APIKeyGuard>
-        </AuthProvider>
+        <APIKeyGuard>
+          <Workspace />
+        </APIKeyGuard>
       </ThemeProvider>
     </AppErrorBoundary>
   );

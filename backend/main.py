@@ -92,17 +92,8 @@ class CompileRequest(BaseModel):
     resume_latex: str
 
 
-class SectionRequest(BaseModel):
-    section_latex: str
-    job_description: str
-
-
 class ExtractPdfResponse(BaseModel):
     extracted_text: str
-
-
-class SectionAnalysisResponse(BaseModel):
-    feedback: str
 
 
 class ChatResponse(BaseModel):
@@ -400,40 +391,6 @@ async def extract_pdf_text(file: UploadFile = File(...)) -> ExtractPdfResponse:
     return ExtractPdfResponse(extracted_text=text)
 
 
-@app.post("/api/analyze-section", response_model=SectionAnalysisResponse)
-async def analyze_section(
-    request: SectionRequest,
-    credentials: Tuple[str, str] = Depends(get_byok_credentials)
-) -> SectionAnalysisResponse:
-    """
-    Fine-grained analysis for specific resume sections.
-    """
-    api_key, model = credentials
-    lm = init_dspy_lm(api_key=api_key, model=model)
-    # Define a quick inline signature for section analysis
-    class SectionAnalyzer(dspy.Signature):
-        """Analyze a specific LaTeX section against a job description."""
-        section_latex = dspy.InputField()
-        job_description = dspy.InputField()
-        feedback = dspy.OutputField()
-
-    analyzer = dspy.Predict(SectionAnalyzer)
-
-    def _run_analyzer():
-        with dspy.context(lm=lm):
-            return analyzer(section_latex=request.section_latex, job_description=request.job_description)
-
-    try:
-        result = await asyncio.to_thread(_run_analyzer)
-        return SectionAnalysisResponse(feedback=getattr(result, "feedback", ""))
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Error during section analysis in /api/analyze-section (details scrubbed for security)")
-        raise HTTPException(
-            status_code=500,
-            detail="An error occurred during section analysis. Please verify your API key and prompt."
-        )
 
 
 @app.post("/api/chat", response_model=ChatResponse)
@@ -519,4 +476,3 @@ async def health_check() -> HealthCheckResponse:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-

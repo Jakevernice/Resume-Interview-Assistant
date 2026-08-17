@@ -43,6 +43,13 @@ interface AppState {
   extractedPdfText: string;
   /** Live object URL of the uploaded PDF file. Not persisted in storage. */
   uploadedPdfUrl: string | null;
+  /** In-memory BYOK API key. Never persisted. */
+  apiKey: string | null;
+  /** In-memory BYOK target model. Never persisted. */
+  model: string;
+  setApiKey: (key: string | null) => void;
+  setModel: (model: string) => void;
+  setCredentials: (apiKey: string | null, model?: string) => void;
   setResumeLatex: (latex: string) => void;
   /** Applies a change and saves a snapshot to history for undo. */
   applyEdit: (updates: Partial<HistoryState>) => void;
@@ -144,6 +151,15 @@ export const useStore = create<AppState>()(
       inputMode: 'latex',
       extractedPdfText: '',
       uploadedPdfUrl: null,
+      apiKey: null,
+      model: 'gemini/gemini-2.0-flash',
+      setApiKey: (key) => set({ apiKey: key }),
+      setModel: (model) => set({ model }),
+      setCredentials: (apiKey, model) =>
+        set((state) => ({
+          apiKey,
+          model: model || state.model,
+        })),
       setResumeLatex: (latex) => set({ resume_latex: latex }),
       applyEdit: (updates) =>
         set((state) => ({
@@ -264,8 +280,8 @@ export const useStore = create<AppState>()(
       storage: createJSONStorage(() => storage),
       version: 2,
       partialize: (state) => {
-        // Exclude temporary session blob url from persistent storage
-        const { uploadedPdfUrl, ...rest } = state;
+        // Exclude temporary session blob url and BYOK credentials from persistent storage
+        const { uploadedPdfUrl, apiKey, model, ...rest } = state;
         return rest;
       },
       migrate: (persistedState: unknown, version: number) => {
@@ -285,4 +301,3 @@ export const useStore = create<AppState>()(
     }
   )
 );
-

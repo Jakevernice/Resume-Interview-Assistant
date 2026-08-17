@@ -1,8 +1,4 @@
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
-});
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export interface RawSurgicalPatch {
   search_text: string;
@@ -42,7 +38,6 @@ export interface ProcessResumeResult {
   job_description: string;
   analysis_warnings: string[];
 }
-
 
 const toString = (value: unknown): string => {
   if (typeof value === 'string') return value;
@@ -152,12 +147,10 @@ export interface ChatMessage {
   id?: string;
 }
 
-
 export interface ChatResponse {
   response_text: string;
   suggested_patches: RawSurgicalPatch[];
 }
-
 
 export const normalizeProcessResumeResponse = (payload: unknown): ProcessResumeResult => {
   const source = (typeof payload === 'object' && payload !== null ? payload : {}) as Record<string, unknown>;
@@ -190,10 +183,6 @@ export const normalizeProcessResumeResponse = (payload: unknown): ProcessResumeR
   };
 };
 
-// We don't use a global interceptor for the API key because it's in a React Context.
-// Instead, we provide a function or custom hook that uses the key.
-// But for convenience, let's define the base endpoints here.
-
 export const processResume = async (
   latex: string,
   jobUrl?: string,
@@ -202,67 +191,85 @@ export const processResume = async (
   model?: string,
   inputMode: string = 'latex',
   signal?: AbortSignal
-) => {
-  const response = await api.post('/api/process', {
-    resume_latex: latex,
-    job_url: jobUrl,
-    job_description: jobDesc,
-    input_mode: inputMode
-  }, {
+): Promise<ProcessResumeResult> => {
+  const response = await fetch(`${BASE_URL}/api/process`, {
+    method: 'POST',
     headers: {
-      'X-API-Key': apiKey,
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey || '',
       'X-Model': model || 'gemini/gemini-2.0-flash',
-      'X-Gemini-API-Key': apiKey // backwards compatibility
+      'X-Gemini-API-Key': apiKey || '',
     },
-    signal
+    body: JSON.stringify({
+      resume_latex: latex,
+      job_url: jobUrl,
+      job_description: jobDesc,
+      input_mode: inputMode,
+    }),
+    signal,
   });
 
-  return normalizeProcessResumeResponse(response.data);
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ detail: 'Failed to process resume' }));
+    throw new Error(errorBody.detail || 'Failed to process resume');
+  }
+
+  const data = await response.json();
+  return normalizeProcessResumeResponse(data);
 };
 
-export const compileLatex = async (latex: string, signal?: AbortSignal) => {
-  try {
-    return await api.post('/api/compile', {
-      resume_latex: latex
-    }, {
-      responseType: 'blob',
-      signal
-    });
-  } catch (error: unknown) {
-    const err = error as { response?: { data?: unknown } };
-    if (err?.response?.data instanceof Blob) {
-      try {
-        const text = await err.response.data.text();
-        err.response.data = JSON.parse(text);
-      } catch {
-        // Keep original blob if not valid JSON
-      }
+export const compileLatex = async (latex: string, signal?: AbortSignal): Promise<{ data: Blob }> => {
+  const response = await fetch(`${BASE_URL}/api/compile`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      resume_latex: latex,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    let errorData: unknown = null;
+    try {
+      errorData = await response.json();
+    } catch {
+      // Fall through if not JSON
     }
-    throw error;
+    const err = new Error('LaTeX compilation failed') as Error & { response?: { data?: unknown } };
+    err.response = { data: errorData };
+    throw err;
   }
+
+  const blob = await response.blob();
+  return { data: blob };
 };
 
 export const checkHealth = async () => {
-  return api.get('/health');
+  const response = await fetch(`${BASE_URL}/health`);
+  if (!response.ok) {
+    throw new Error('Health check failed');
+  }
+  return response.json();
 };
 
-/**
- * Upload a PDF file and retrieve its extracted plain text.
- *
- * The backend uses pypdf to extract selectable text from the PDF pages.
- * The returned text is used by the PR-style read-only review pane.
- */
 export const extractPdf = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await api.post<{ extracted_text: string }>(
-    '/api/extract-pdf',
-    formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
-  );
+  const response = await fetch(`${BASE_URL}/api/extract-pdf`, {
+    method: 'POST',
+    body: formData,
+  });
 
-  return response.data.extracted_text;
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ detail: 'Failed to extract text from PDF' }));
+    throw new Error(errorBody.detail || 'Failed to extract text from PDF');
+  }
+
+  const data = (await response.json()) as { extracted_text: string };
+  return data.extracted_text;
 };
 
 export const sendChatMessage = async (
@@ -273,33 +280,53 @@ export const sendChatMessage = async (
   apiKey: string,
   model?: string
 ): Promise<ChatResponse> => {
-  const response = await api.post<ChatResponse>('/api/chat', {
-    chat_history: history.map(({ role, content }) => ({ role, content })),
-    message,
-    resume_content: resumeContent,
-    input_mode: inputMode
-  }, {
+  const response = await fetch(`${BASE_URL}/api/chat`, {
+    method: 'POST',
     headers: {
+      'Content-Type': 'application/json',
       'X-API-Key': apiKey,
       'X-Model': model || 'gemini/gemini-2.0-flash',
-      'X-Gemini-API-Key': apiKey
-    }
+      'X-Gemini-API-Key': apiKey,
+    },
+    body: JSON.stringify({
+      chat_history: history.map(({ role, content }) => ({ role, content })),
+      message,
+      resume_content: resumeContent,
+      input_mode: inputMode,
+    }),
   });
-  return response.data;
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ detail: 'Chat interaction failed' }));
+    throw new Error(errorBody.detail || 'Chat interaction failed');
+  }
+
+  return response.json();
 };
 
 export const applyPatch = async (
   resumeLatex: string,
   patches: SurgicalPatch[]
 ): Promise<{ updated_resume_latex: string; patch_report: PatchReport }> => {
-  const response = await api.post<{ updated_resume_latex: unknown; patch_report: unknown }>('/api/apply-patch', {
-    resume_latex: resumeLatex,
-    patches
+  const response = await fetch(`${BASE_URL}/api/apply-patch`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      resume_latex: resumeLatex,
+      patches,
+    }),
   });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ detail: 'Failed to apply patches' }));
+    throw new Error(errorBody.detail || 'Failed to apply patches');
+  }
+
+  const data = await response.json();
   return {
-    updated_resume_latex: toString(response.data.updated_resume_latex),
-    patch_report: normalizePatchReport(response.data.patch_report, patches.length),
+    updated_resume_latex: toString(data.updated_resume_latex),
+    patch_report: normalizePatchReport(data.patch_report, patches.length),
   };
 };
-
-export default api;

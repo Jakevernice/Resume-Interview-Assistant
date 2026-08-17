@@ -1,12 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
-import { useAuth } from '../store/AuthContext';
 import { sendChatMessage, ChatMessage } from '../services/api';
 import { Send, Loader2, User, Bot, Sparkles } from 'lucide-react';
 
 const ChatPane: React.FC = () => {
-  const { chatHistory, appendChatMessage, resume_latex, appendSurgicalPatches, inputMode, extractedPdfText } = useStore();
-  const { apiKey, model } = useAuth();
+  const { chatHistory, appendChatMessage, resume_latex, appendSurgicalPatches, inputMode, extractedPdfText, apiKey, model } = useStore();
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
