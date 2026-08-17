@@ -2,6 +2,13 @@
 
 ## Completed Features & Enhancements
 
+- [x] **Audit Remediation & Lean Refactor**
+  - Removed legacy prototype files and unused dependencies (`axios`, `clsx`, `tailwind-merge`, `jinja2`, `python-dotenv`, `httpx`).
+  - Switched frontend HTTP layer entirely to native `fetch`.
+  - Consolidated BYOK API credential handling into Zustand (`useStore`) with memory-only exclusion from storage.
+  - Removed unused `/api/analyze-section` endpoint and schemas.
+  - Optimized string deduplication with standard library `list(dict.fromkeys(...))`.
+
 - [x] **Phase 4: UI/UX Refinement & Layout Consolidation**
   - Standardized Windows XP retro styling across all components (Luna Light & Royale Noir themes).
   - Workspace layout structured with 60/40 editor-chat split, clean scroll containers, and clear error banners.
@@ -30,6 +37,40 @@
 
 - [x] **Dependency Cleanup**
   - Removed deprecated `google-generativeai` direct dependency in favor of LiteLLM orchestration.
+
+---
+
+## Manual Confirmation Checklist
+
+- [ ] **Step 1: Start Full Stack Application**
+  ```bash
+  sudo docker compose up --build
+  ```
+  - Open `http://localhost:3000` in the browser.
+
+- [ ] **Step 2: BYOK Authentication Guard**
+  - Verify that the **Connect Your API Key** modal appears on initial load.
+  - Enter a valid Google Gemini (or LiteLLM supported) API key.
+  - Connect and enter the workspace.
+
+- [ ] **Step 3: Zero-Retention Verification**
+  - Open Browser DevTools (`F12` / `Ctrl + Shift + I`) $\rightarrow$ **Application** $\rightarrow$ **Storage** $\rightarrow$ **IndexedDB** $\rightarrow$ `keyval-store`.
+  - Check `resume-rebuilder-storage` to ensure `apiKey` is strictly in-memory and not stored in IndexedDB.
+
+- [ ] **Step 4: Resume Optimization & Compilation**
+  - Paste a sample LaTeX resume and job description in the sidebar.
+  - Click **Rebuild & Optimize**.
+  - Verify AI critique, required skills, and missing keywords render.
+  - Verify suggested surgical patches appear in the review modal / diff viewer.
+  - Verify real-time PDF compilation on the right pane.
+
+- [ ] **Step 5: Chat Assistant Workflow**
+  - Send an instruction via the Chat pane (e.g., *"Add Kubernetes experience to my skills section"*).
+  - Verify response text and check that suggested patches are staged cleanly for review.
+
+- [ ] **Step 6: Reset / Start New Session**
+  - Click **Start New Session / Reset**.
+  - Verify workspace and cache reset cleanly without session errors.
 
 ---
 
