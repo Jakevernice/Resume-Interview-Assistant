@@ -113,9 +113,9 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   const modelPresets = [
-    { label: 'gemini/gemini-2.0-flash', id: 'gemini/gemini-2.0-flash' },
-    { label: 'openai/gpt-4o-mini', id: 'openai/gpt-4o-mini' },
-    { label: 'anthropic/claude-3-5-sonnet', id: 'anthropic/claude-3-5-sonnet-20241022' },
+    { label: 'gemini/gemini-3.5-flash', id: 'gemini/gemini-3.5-flash' },
+    { label: 'openai/gpt-5.6-luna', id: 'openai/gpt-5.6-luna' },
+    { label: 'anthropic/claude-sonnet-5', id: 'anthropic/claude-sonnet-5' },
     { label: 'groq/llama-3.3-70b', id: 'groq/llama-3.3-70b-versatile' },
     { label: 'xai/grok-2', id: 'xai/grok-2' },
     { label: 'deepseek/deepseek-chat', id: 'deepseek/deepseek-chat' },
