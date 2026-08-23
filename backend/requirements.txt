@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pydantic
+dspy-ai
+playwright
+pypdf
+python-multipart
+pytest
