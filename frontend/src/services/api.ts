@@ -246,12 +246,25 @@ export const compileLatex = async (latex: string, signal?: AbortSignal): Promise
   return { data: blob };
 };
 
-export const checkHealth = async () => {
+export interface HealthCheckResponse {
+  status: string;
+  engine?: string;
+  data?: {
+    status: string;
+    engine?: string;
+  };
+}
+
+export const checkHealth = async (): Promise<HealthCheckResponse> => {
   const response = await fetch(`${BASE_URL}/health`);
   if (!response.ok) {
     throw new Error('Health check failed');
   }
-  return response.json();
+  const payload = (await response.json()) as { status: string; engine?: string };
+  return {
+    ...payload,
+    data: payload,
+  };
 };
 
 export const extractPdf = async (file: File): Promise<string> => {
