@@ -1,0 +1,176 @@
+/*
+ * themes.css
+ *
+ * Defines all aesthetic primitive CSS custom properties for the retro XP theme system:
+ *
+ *   XP Light (default)
+ *     Classic Windows XP Luna / Silver aesthetic.
+ *
+ *   XP Dark
+ *     Sleek, highly pleasing Windows XP "Royale Noir" / "Zune" style.
+ *
+ * Switching between XP Light and XP Dark is instant and does not require a page reload.
+ */
+
+/* ─────────────────────────────────────────────
+   XP Light (Default Theme)
+───────────────────────────────────────────── */
+:root,
+[data-theme="light"] {
+  /* Surface */
+  --color-bg-base:        #d4d0c8;
+  --color-bg-subtle:      #ece9d8;
+  --color-bg-muted:       #c0c0c0;
+  --color-bg-overlay:     rgba(0, 0, 120, 0.50);
+
+  /* Borders */
+  --color-border:         #808080;
+  --color-border-strong:  #404040;
+
+  /* Text */
+  --color-text-primary:   #000000;
+  --color-text-secondary: #222222;
+  --color-text-muted:     #555555;
+  --color-text-inverse:   #ffffff;
+
+  /* Brand / accent – XP blue */
+  --color-accent:         #0054e3;
+  --color-accent-hover:   #003d9e;
+  --color-accent-subtle:  #bcd4ff;
+
+  /* Status */
+  --color-success:        #007700;
+  --color-success-subtle: #d4edda;
+  --color-warning:        #b45309;
+  --color-warning-subtle: #fef3c7;
+  --color-danger:         #cc0000;
+  --color-danger-subtle:  #f8d7da;
+
+  /* High-Contrast Tags Theme */
+  --color-tag-bg:             linear-gradient(to bottom, #f0f4f8, #d9e2ec);
+  --color-tag-border:         #b0c4de;
+  --color-tag-text:           #0f2b46;
+  --color-tag-warning-bg:     linear-gradient(to bottom, #fef3c7, #fde68a);
+  --color-tag-warning-border: #f59e0b;
+  --color-tag-warning-text:   #78350f;
+
+  /* Classic inset/outset shadows mimic bevelled UI chrome */
+  --shadow-sm:  inset -1px -1px 0 #ffffff, inset 1px 1px 0 #808080;
+  --shadow-md:  inset -2px -2px 0 #ffffff, inset 2px 2px 0 #808080;
+  --shadow-lg:  2px 2px 4px rgba(0, 0, 0, 0.40);
+
+  /* Radii */
+  --radius-sm:  2px;
+  --radius-md:  3px;
+  --radius-lg:  4px;
+
+  /* Editor */
+  --monaco-theme:         vs;
+}
+
+/* ─────────────────────────────────────────────
+   XP Dark (Royale Noir / Zune aesthetic)
+───────────────────────────────────────────── */
+[data-theme="dark"] {
+  /* Surface */
+  --color-bg-base:        #181818;
+  --color-bg-subtle:      #262626;
+  --color-bg-muted:       #0e0e0e;
+  --color-bg-overlay:     rgba(0, 0, 0, 0.80);
+
+  /* Borders */
+  --color-border:         #4a4a4a;
+  --color-border-strong:  #6a6a6a;
+
+  /* Text - Drastically enhanced for readability and contrast */
+  --color-text-primary:   #ffffff;
+  --color-text-secondary: #e2e8f0;
+  --color-text-muted:     #cbd5e1;
+  --color-text-inverse:   #181818;
+
+  /* Brand / accent – Premium Zune Orange / Royale Blue hybrid */
+  --color-accent:         #3b82f6;
+  --color-accent-hover:   #60a5fa;
+  --color-accent-subtle:  #1e3a8a;
+
+  /* Status */
+  --color-success:        #4ade80;
+  --color-success-subtle: #052e16;
+  --color-warning:        #fbbf24;
+  --color-warning-subtle: #2e1b00;
+  --color-danger:         #f87171;
+  --color-danger-subtle:  #2d0a0a;
+
+  /* High-Contrast Tags Theme */
+  --color-tag-bg:             linear-gradient(to bottom, #2b3a4a, #1b2631);
+  --color-tag-border:         #3b82f6;
+  --color-tag-text:           #ffffff;
+  --color-tag-warning-bg:     linear-gradient(to bottom, #503000, #3d2400);
+  --color-tag-warning-border: #f59e0b;
+  --color-tag-warning-text:   #ffffff;
+
+  /* Classic bevels adjusted for dark mode */
+  --shadow-sm:  inset -1px -1px 0 #3a3a3a, inset 1px 1px 0 #111111;
+  --shadow-md:  inset -2px -2px 0 #3a3a3a, inset 2px 2px 0 #111111;
+  --shadow-lg:  2px 2px 8px rgba(0, 0, 0, 0.70);
+
+  /* Radii */
+  --radius-sm:  2px;
+  --radius-md:  3px;
+  --radius-lg:  4px;
+
+  /* Editor */
+  --monaco-theme:         vs-dark;
+}
+
+/* ─────────────────────────────────────────────
+   Global Windows XP Structural Styling
+   Applies permanently across both themes.
+───────────────────────────────────────────── */
+:root {
+  font-family: 'Tahoma', 'MS Sans Serif', Arial, sans-serif !important;
+}
+
+body {
+  font-family: 'Tahoma', 'MS Sans Serif', Arial, sans-serif !important;
+  font-size: 11px;
+  background-color: var(--color-bg-muted);
+}
+
+/* Chunky retro scrollbars */
+::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+::-webkit-scrollbar-button {
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
+  width: 16px;
+  height: 16px;
+}
+
+/* ─────────────────────────────────────────────
+   Shared Transition
+   Suppress transition during page load.
+───────────────────────────────────────────── */
+:root:not([data-no-transition]),
+[data-theme="light"]:not([data-no-transition]),
+[data-theme="dark"]:not([data-no-transition]) {
+  transition:
+    background-color 200ms ease,
+    border-color     200ms ease,
+    color            200ms ease;
+}

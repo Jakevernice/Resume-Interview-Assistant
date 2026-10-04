@@ -4,6 +4,7 @@ __pycache__/
 venv/
 ENV/
 Photos/
+.agents/
 
 # Environment variables
 .env
@@ -14,3 +15,13 @@ Photos/
 
 # Misc
 .DS_Store
+
+# node
+node_modules/
+*/node_modules
+dist/
+
+#agent-cli
+.claude/
+.gemini/
+.antigravitycli/
