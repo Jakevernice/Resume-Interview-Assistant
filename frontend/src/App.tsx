@@ -99,7 +99,8 @@ const APIKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     setError(null);
     try {
       const res = await checkHealth();
-      if (res.data.status === 'healthy') {
+      const status = res?.status || res?.data?.status;
+      if (status === 'healthy') {
         setCredentials(inputKey, inputModel.trim() || 'gemini/gemini-2.0-flash');
       } else {
         setError('Backend is not responding correctly.');
